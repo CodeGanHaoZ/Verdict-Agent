@@ -1,0 +1,14 @@
+{
+  "name": "@verdict/verifier-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "z-verify": "bin/z-verify.mjs"
+  },
+  "dependencies": {
+    "@verdict/protocol": "0.1.0",
+    "@verdict/core": "0.1.0",
+    "@verdict/evidence": "0.1.0"
+  }
+}

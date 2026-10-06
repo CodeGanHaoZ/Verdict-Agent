@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/protocol"
+    },
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/evidence"
+    },
+    {
+      "path": "apps/verifier-cli"
+    }
+  ]
+}

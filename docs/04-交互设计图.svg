@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1160" viewBox="0 0 1280 1160" role="img" aria-labelledby="title desc"><title id="title">Verdict 交互设计</title><desc id="desc">三个拟议主视图：服务选择、单次验收审计、证据与第二实例复验；显示失败停止、未知项、归属与异步发布状态。图中所有数据和结果为示例。</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#486d98"/></marker></defs><rect width="1280" height="1160" fill="#f5f7fb"/><g font-family="'Noto Sans CJK SC','Source Han Sans SC','Microsoft YaHei',sans-serif">
 <text x="48" y="58" font-size="35" fill="#122d4e" font-weight="700">Verdict · 从交付承诺到可复查结论</text>
-<text x="48" y="94" font-size="22" fill="#43536a" font-weight="400">交互线框 v0.2｜所有界面、状态与命令均为设计示例，尚未实现</text>
+<text x="48" y="94" font-size="22" fill="#43536a" font-weight="400">交互线框 v0.2｜界面为设计示例；A 包独立复验 CLI 已实现</text>
 <rect x="48" y="140" width="372" height="794" rx="18" fill="#ffffff" stroke="#d4deeb"/>
 <rect x="454" y="140" width="372" height="794" rx="18" fill="#ffffff" stroke="#d4deeb"/>
 <rect x="860" y="140" width="372" height="794" rx="18" fill="#ffffff" stroke="#d4deeb"/>
@@ -83,5 +83,5 @@
 <text x="70" y="1048" font-size="19" fill="#43536a" font-weight="400">第二实例复验 → 检查历史证据是否适用 → 调整候选并重新验收。</text>
 <text x="70" y="1076" font-size="19" fill="#43536a" font-weight="400">服务修复后的新交付可以通过；旧记录保留任务、版本和区块范围。重复转发不增加权重。</text>
 <path d="M1046,934 V976" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
-<text x="48" y="1141" font-size="19" fill="#43536a" font-weight="400">拟议复验命令：z-verify &lt;bundle&gt;（尚未实现）；图中 A / B / C 不代表真实厂商事故。</text>
+<text x="48" y="1141" font-size="19" fill="#43536a" font-weight="400">A 包 CLI 已实现；本图为界面示意，A / B / C 不代表真实厂商事故。</text>
 </g></svg>

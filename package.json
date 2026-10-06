@@ -1,0 +1,30 @@
+{
+  "name": "verdict-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0 <23"
+  },
+  "packageManager": "npm@10.9.9",
+  "workspaces": [
+    "packages/protocol",
+    "packages/core",
+    "packages/evidence",
+    "apps/verifier-cli"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "npm run build && tsx --test packages/*/test/*.test.ts apps/verifier-cli/test/*.test.ts",
+    "verify": "node apps/verifier-cli/dist/index.js",
+    "capture:proof": "python3 fixtures/core/capture.py",
+    "demo:a": "npm run build && tsx fixtures/core/export-demo.ts",
+    "typecheck": "npm run build && tsc -p tsconfig.check.json"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "tsx": "4.23.15",
+    "@types/node": "22.19.0",
+    "viem": "2.57.3"
+  }
+}

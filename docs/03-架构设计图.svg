@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1210" viewBox="0 0 1280 1210" role="img" aria-labelledby="title desc"><title id="title">Verdict 验收与证据审计架构</title><desc id="desc">拟议系统：任务约束、观测与排序、签名交付、确定性核验、审计报告、证据复验，以及独立的异步存证工作线。所有产品模块尚未实现。</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#486d98"/></marker></defs><rect width="1280" height="1210" fill="#f5f7fb"/><g font-family="'Noto Sans CJK SC','Source Han Sans SC','Microsoft YaHei',sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1210" viewBox="0 0 1280 1210" role="img" aria-labelledby="title desc"><title id="title">Verdict 验收与证据审计架构</title><desc id="desc">拟议系统：任务约束、观测与排序、签名交付、确定性核验、审计报告、证据复验，以及独立的异步存证工作线。A 包核验与 CLI 已实现；其余模块仍按计划推进。</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#486d98"/></marker></defs><rect width="1280" height="1210" fill="#f5f7fb"/><g font-family="'Noto Sans CJK SC','Source Han Sans SC','Microsoft YaHei',sans-serif">
 <text x="48" y="58" font-size="36" fill="#122d4e" font-weight="700">Verdict · 验收与证据审计</text>
 <text x="48" y="94" font-size="22" fill="#43536a" font-weight="400">观测帮助选择 · 核对承诺与交付 · 公开记录供后来者复验</text>
 <rect x="48" y="120" width="1184" height="86" rx="14" fill="#eaf1fb" stroke="#d4deeb"/>
-<text x="70" y="156" font-size="23" fill="#162c49" font-weight="700">融合设计 v0.2｜方案示意，产品尚未实现</text>
+<text x="70" y="156" font-size="23" fill="#162c49" font-weight="700">融合设计 v0.2｜A 包核验与 CLI 已实现，其余按工作包推进</text>
 <text x="70" y="190" font-size="19" fill="#43536a" font-weight="400">模型理解与编排；确定性代码核验。P0 / P1 表示计划优先级。</text>
 <rect x="48" y="246" width="1184" height="108" rx="14" fill="#ffffff" stroke="#d4deeb"/>
 <text x="70" y="282" font-size="23" fill="#162c49" font-weight="700">任务与验收条件</text>
