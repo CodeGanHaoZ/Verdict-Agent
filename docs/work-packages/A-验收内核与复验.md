@@ -1,6 +1,6 @@
 # 工作包 A：验收内核、证据格式与复验工具
 
-交接状态：待认领、待实施。与 [三人分工](../07-三人分工.md)、[接口约定](../08-接口约定.md)、[PRD](../02-PRD.md) 一起阅读。
+交接状态：已进入正式开发，岗位待认领，业务实现待完成。与 [根规则](../../AGENTS.md)、[工程结构](../09-工程结构.md)、[三人分工](../07-三人分工.md)、[接口约定](../08-接口约定.md)、[PRD](../02-PRD.md) 一起阅读。
 
 ## 你的交付目标
 
@@ -18,7 +18,7 @@
 
 ## 你维护的文件
 
-`packages/protocol/`、`packages/core/`、`packages/evidence/`、`apps/verifier-cli/`、`fixtures/core/`。这些是拟议目录；根依赖与锁文件由 B 统一维护。
+`packages/protocol/`、`packages/core/`、`packages/evidence/`、`apps/verifier-cli/`、`fixtures/core/`。目录职责与就近规则已落地，源码仍待实现；根依赖与锁文件由 B 统一维护。
 
 ## 和另外两人的交接
 

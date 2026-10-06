@@ -1,0 +1,40 @@
+# Credentials and private configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+.secrets/
+
+# Isolated local instances, keys, raw observations and evidence
+/.local/
+/data/
+/runs/
+/logs/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.log
+
+# Dependency and build outputs
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.cache/
+.tools/
+.venv/
+__pycache__/
+*.pyc
+/contracts/evidence-anchor/out/
+/contracts/evidence-anchor/cache/
+/contracts/evidence-anchor/broadcast/
+playwright-report/
+test-results/
+.DS_Store
+
+# Unreviewed source captures and original event materials
+/docs/archive/
+选手手册-*.txt

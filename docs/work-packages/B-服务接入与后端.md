@@ -1,6 +1,6 @@
 # 工作包 B：服务接入、任务流程与后端
 
-交接状态：待认领、待实施。与 [三人分工](../07-三人分工.md)、[接口约定](../08-接口约定.md)、[PRD](../02-PRD.md) 一起阅读。
+交接状态：已进入正式开发，岗位待认领，业务实现待完成。与 [根规则](../../AGENTS.md)、[工程结构](../09-工程结构.md)、[三人分工](../07-三人分工.md)、[接口约定](../08-接口约定.md)、[PRD](../02-PRD.md) 一起阅读。
 
 ## 你的交付目标
 
@@ -20,7 +20,7 @@
 
 ## 你维护的文件
 
-`apps/server/`、`services/demo/`、`packages/observations/`、`examples/consumer/`、`scripts/dev/`，以及根 workspace、依赖、锁文件、统一启动与 CI。不要在 API 层重写 A 的证明或验签逻辑。
+`apps/server/`、`services/demo/`、`packages/observations/`、`examples/consumer/`、`config/`、`scripts/dev/`、`tests/integration/`，以及根 workspace、依赖、锁文件、统一启动与 CI。职责目录已建立；不要在 API 层重写 A 的证明或验签逻辑。
 
 ## 和另外两人的交接
 
