@@ -1,0 +1,167 @@
+{
+  "schemaVersion": "1.0.0",
+  "ruleVersion": "eth-account-v1",
+  "dataKind": "FROZEN_MAINNET_RPC",
+  "snapshots": [
+    {
+      "file": "12000000.json",
+      "blockNumber": 12000000,
+      "blockHash": "0x3c9c46a46b17361cd1ac3ed3401c9a268095c1810bf991c470c139f8441e1d0b",
+      "sha256": "293edb88149e5637502935bfa7fba52a460486d5c6128339ef25f8b179102195",
+      "proofSource": "https://eth.drpc.org",
+      "baselineSource": "https://1rpc.io/eth",
+      "capturedAt": "2026-10-06T16:14:50.569269+00:00"
+    },
+    {
+      "file": "14000000.json",
+      "blockNumber": 14000000,
+      "blockHash": "0x9bff49171de27924fa958faf7b7ce605c1ff0fdee86f4c0c74239e6ae20d9446",
+      "sha256": "077a951d2e8d2fbc9e0f64a062e4c01af05c5d8652cd478c1dc1bf882e936c4f",
+      "proofSource": "https://eth.drpc.org",
+      "baselineSource": "https://1rpc.io/eth",
+      "capturedAt": "2026-10-06T16:14:50.522813+00:00"
+    },
+    {
+      "file": "18000000.json",
+      "blockNumber": 18000000,
+      "blockHash": "0x95b198e154acbfc64109dfd22d8224fe927fd8dfdedfae01587674482ba4baf3",
+      "sha256": "3450676a0b0099d9e23754729de7ef8fa7ca87d1ac595d4fe0a8e9c76f4fff28",
+      "proofSource": "https://eth.drpc.org",
+      "baselineSource": "https://ethereum-rpc.publicnode.com",
+      "capturedAt": "2026-10-06T16:14:50.524926+00:00"
+    },
+    {
+      "file": "20000000.json",
+      "blockNumber": 20000000,
+      "blockHash": "0xd24fd73f794058a3807db926d8898c6481e902b7edb91ce0d479d6760f276183",
+      "sha256": "a76b008f77abef86adaa8a11cf94869184cae57a74a3a3f016c834f5c29fa8f7",
+      "proofSource": "https://eth.drpc.org",
+      "baselineSource": "https://ethereum-rpc.publicnode.com",
+      "capturedAt": "2026-10-06T16:14:52.897341+00:00"
+    },
+    {
+      "file": "24000000.json",
+      "blockNumber": 24000000,
+      "blockHash": "0x738cc1716ea1f08adac2d4e2230aedcee2d5cd3f65d66d5d3597e05d710a3d50",
+      "sha256": "cce66ded656d7cfacfe34f83038faa2aceb2807b57b16081486445b6af577715",
+      "proofSource": "https://eth.drpc.org",
+      "baselineSource": "https://ethereum-rpc.publicnode.com",
+      "capturedAt": "2026-10-06T16:14:52.963541+00:00"
+    },
+    {
+      "file": "26134149.json",
+      "blockNumber": 26134149,
+      "blockHash": "0xe0743902f44425ff740070d696e93edeba3f6cfb2424a3fd18fb342a61a3df8f",
+      "sha256": "8ceb18c8e77b044e6efad8e18c72aa40609e0e024e10ae5f1796638df19846d3",
+      "proofSource": "https://eth.drpc.org",
+      "baselineSource": "https://ethereum-rpc.publicnode.com",
+      "capturedAt": "2026-10-06T16:20:57.230013+00:00"
+    }
+  ],
+  "cases": [
+    {
+      "id": "12000000-historical-weth",
+      "snapshotFile": "12000000.json",
+      "accountIndex": 0,
+      "hardfork": "muirGlacier",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "7206040505460292449339373",
+        "nonce": "1",
+        "codeHash": "0xd0a06b12ac47863b5c7be4185c2deaad1c61557033f56c7d4ea74429cbb25e23",
+        "storageRoot": "0xbdb32fbda483872169b8e553ae21c36b0ab947d88c9d8d4ff075d0f6e40f76dd"
+      }
+    },
+    {
+      "id": "14000000-historical-weth",
+      "snapshotFile": "14000000.json",
+      "accountIndex": 0,
+      "hardfork": "arrowGlacier",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "7708608446997183674505912",
+        "nonce": "1",
+        "codeHash": "0xd0a06b12ac47863b5c7be4185c2deaad1c61557033f56c7d4ea74429cbb25e23",
+        "storageRoot": "0x6d3bfd1c778ea0c45ba4743160094747fe9b84da5ae70fbf50fc6114498ca0d6"
+      }
+    },
+    {
+      "id": "18000000-historical-weth",
+      "snapshotFile": "18000000.json",
+      "accountIndex": 0,
+      "hardfork": "shanghai",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "3263364907582091798314689",
+        "nonce": "1",
+        "codeHash": "0xd0a06b12ac47863b5c7be4185c2deaad1c61557033f56c7d4ea74429cbb25e23",
+        "storageRoot": "0x4c04fd0a6b7a4814a2f1da1d5518cfc8575e2156b9e470d64521e238ddaac66f"
+      }
+    },
+    {
+      "id": "20000000-historical-weth",
+      "snapshotFile": "20000000.json",
+      "accountIndex": 0,
+      "hardfork": "cancun",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "2933633723194923479377016",
+        "nonce": "1",
+        "codeHash": "0xd0a06b12ac47863b5c7be4185c2deaad1c61557033f56c7d4ea74429cbb25e23",
+        "storageRoot": "0xcf90229e244529c5ba8f641d2101627750cb6cf909417fbbcbc30a08ee2beef0"
+      }
+    },
+    {
+      "id": "24000000-historical-weth",
+      "snapshotFile": "24000000.json",
+      "accountIndex": 0,
+      "hardfork": "bpo1",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "2578764282569393454844437",
+        "nonce": "1",
+        "codeHash": "0xd0a06b12ac47863b5c7be4185c2deaad1c61557033f56c7d4ea74429cbb25e23",
+        "storageRoot": "0x2d2a07b583c2832f472ba2bc37c01b5d645ceb56ffd958063ec310756703111d"
+      }
+    },
+    {
+      "id": "26134149-zero-nonce-no-code",
+      "snapshotFile": "26134149.json",
+      "accountIndex": 0,
+      "hardfork": "bpo2",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "14152514231422266337523",
+        "nonce": "0",
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "storageRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      }
+    },
+    {
+      "id": "26134149-high-nonce-no-code",
+      "snapshotFile": "26134149.json",
+      "accountIndex": 1,
+      "hardfork": "bpo2",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "99240099711186694684506",
+        "nonce": "18606795",
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "storageRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      }
+    },
+    {
+      "id": "26134149-zero-balance-contract",
+      "snapshotFile": "26134149.json",
+      "accountIndex": 2,
+      "hardfork": "bpo2",
+      "expectedVerdict": "PASS",
+      "expectedValues": {
+        "balance": "0",
+        "nonce": "1",
+        "codeHash": "0xd80d4b7c890cb9d6a4893e6b52bc34b56b25335cb13716e0d1d31383e6b41505",
+        "storageRoot": "0x04d0767663445dab20d8aedfc2b32ad8d5c383ae4fc7cd0a0f03cbf8cc0cb894"
+      }
+    }
+  ]
+}

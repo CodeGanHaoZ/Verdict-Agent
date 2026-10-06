@@ -41,6 +41,7 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 | [工程结构](docs/09-工程结构.md) | 目录、包依赖、数据位置与模块规则 |
 | [开发启动清单](docs/10-开发启动清单.md) | 当前完成状态和第一批实施任务 |
 | [A 包运行与接入](docs/11-A包实现与复验.md) | 实际命令、共享接口、真实样本、复验与限制 |
+| [测试数据与覆盖](docs/12-测试数据来源与覆盖.md) | 10 个真实账户／区块组合、公开上游向量与待补边界 |
 | [决策索引](docs/decisions/README.md) | 历史发布、三人分工及当前正式开发授权 |
 
 ![Verdict 系统架构设计；A 包已实现，其余见状态表](docs/03-架构设计图.svg)
