@@ -1,21 +1,16 @@
-# 独立复验 CLI
+# z-verify：独立复验 CLI
 
-负责人：A。状态：职责目录已建立，尚无业务实现或可运行命令。
+A 包 CLI 已实现。安装固定 Node/npm 后，在仓库根执行：
 
-## 职责
+```bash
+npm ci --ignore-scripts
+npm run build
+npm run demo:a
+npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-context.json --json
+```
 
-从文件取得 bundle 和 manifest、从调用者接受的配置取得可信上下文，调用 evidence/core 重验。
+也可在构建后执行 `./node_modules/.bin/z-verify <bundle.json> --context <trusted-context.json>`。默认读取 bundle 同目录的 manifest.json，支持 `--manifest`、`--json`、`--help`。
 
-## 第一批工作
+上下文必须由运行者自行接受，不能因为它与证据一起收到就信任。CLI 不联网，不读第一实例 DB，重新执行摘要、签名、证明和任务条件检查。测试会复制导出文件、删除原目录后用新 Node 进程重验。
 
-实现拟议的 z-verify 入口及可读／JSON 输出；实际命令和安装方式在代码跑通后写入本文件。
-
-## 依赖与边界
-
-允许文件 IO；不依赖 server 的数据库、API 结果或第一实例缓存。
-
-## 完成检查
-
-独立进程复现逐项检查；缺文件、改包、未知规则、基准不接受时退出状态与原因明确。
-
-实际代码、依赖和命令落地后更新本文件，注明已运行的检查与限制。协作依据：[根规则](../../AGENTS.md)、[工程结构](../../docs/09-工程结构.md)、[接口约定](../../docs/08-接口约定.md)。
+退出码：0 为一致且 PASS；2 为一致且 FAIL；3 为未知或上下文不同；4 为完整性／报告不符；1 为用法、文件或格式错误。详见 [A 包说明](../../docs/11-A包实现与复验.md)。

@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "noEmit": true,
+    "rootDir": ".",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "packages/*/test/**/*.ts",
+    "apps/verifier-cli/test/**/*.ts",
+    "fixtures/core/*.ts"
+  ]
+}
