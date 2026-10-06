@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1160" viewBox="0 0 1280 1160" role="img" aria-labelledby="title desc"><title id="title">Verdict 交互设计</title><desc id="desc">三个拟议主视图：服务选择、单次验收审计、证据与第二实例复验；显示失败停止、未知项、归属与异步发布状态。图中所有数据和结果为示例。</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#486d98"/></marker></defs><rect width="1280" height="1160" fill="#f5f7fb"/><g font-family="'Noto Sans CJK SC','Source Han Sans SC','Microsoft YaHei',sans-serif">
+<text x="48" y="58" font-size="35" fill="#122d4e" font-weight="700">Verdict · 从交付承诺到可复查结论</text>
+<text x="48" y="94" font-size="22" fill="#43536a" font-weight="400">交互线框 v0.2｜所有界面、状态与命令均为设计示例，尚未实现</text>
+<rect x="48" y="140" width="372" height="794" rx="18" fill="#ffffff" stroke="#d4deeb"/>
+<rect x="454" y="140" width="372" height="794" rx="18" fill="#ffffff" stroke="#d4deeb"/>
+<rect x="860" y="140" width="372" height="794" rx="18" fill="#ffffff" stroke="#d4deeb"/>
+<text x="70" y="185" font-size="27" fill="#162c49" font-weight="700">01 选择服务</text>
+<text x="476" y="185" font-size="27" fill="#162c49" font-weight="700">02 验收审计</text>
+<text x="882" y="185" font-size="27" fill="#162c49" font-weight="700">03 证据与复验</text>
+<rect x="66" y="214" width="336" height="160" rx="14" fill="#f5f7fb" stroke="#d4deeb"/>
+<text x="88" y="250" font-size="23" fill="#162c49" font-weight="700">任务条件</text>
+<text x="88" y="284" font-size="19" fill="#43536a" font-weight="400">以太坊 · 账户 · 区块 X</text>
+<text x="88" y="312" font-size="19" fill="#43536a" font-weight="400">balance / nonce / codeHash</text>
+<text x="88" y="340" font-size="19" fill="#43536a" font-weight="400">要求服务签名与账户证明</text>
+<text x="88" y="368" font-size="19" fill="#43536a" font-weight="400">调用预算与停止条件</text>
+<rect x="66" y="394" width="336" height="190" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="88" y="430" font-size="23" fill="#162c49" font-weight="700">能力与观测</text>
+<text x="88" y="464" font-size="19" fill="#43536a" font-weight="400">方法 / 历史范围 / 签名支持</text>
+<text x="88" y="492" font-size="19" fill="#43536a" font-weight="400">来源、时间、窗口、样本数</text>
+<text x="88" y="520" font-size="19" fill="#43536a" font-weight="400">延迟、结果数量、已知成本</text>
+<text x="88" y="548" font-size="19" fill="#43536a" font-weight="400">真实 / 冻结 / 故障注入分开</text>
+<text x="88" y="576" font-size="19" fill="#43536a" font-weight="400">未测能力显示未知</text>
+<rect x="66" y="604" width="336" height="142" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="88" y="640" font-size="23" fill="#162c49" font-weight="700">候选与理由</text>
+<text x="88" y="674" font-size="19" fill="#43536a" font-weight="400">A / B / C：受控签名服务</text>
+<text x="88" y="702" font-size="19" fill="#43536a" font-weight="400">先检查硬条件，再参考证据</text>
+<text x="88" y="730" font-size="19" fill="#43536a" font-weight="400">每次交付都执行本次验收</text>
+<rect x="66" y="766" width="336" height="144" rx="14" fill="#fff5e6" stroke="#e5c48d"/>
+<text x="88" y="802" font-size="23" fill="#162c49" font-weight="700">异常入口</text>
+<text x="88" y="836" font-size="19" fill="#43536a" font-weight="400">不支持 → 排除该任务候选</text>
+<text x="88" y="864" font-size="19" fill="#43536a" font-weight="400">限流 → 有预算地重试 / 替换</text>
+<text x="88" y="892" font-size="19" fill="#43536a" font-weight="400">没有候选 → 停止依赖</text>
+<rect x="472" y="214" width="336" height="160" rx="14" fill="#f5f7fb" stroke="#d4deeb"/>
+<text x="494" y="250" font-size="23" fill="#162c49" font-weight="700">承诺与交付对照</text>
+<text x="494" y="284" font-size="19" fill="#43536a" font-weight="400">约定：区块 X 的账户状态</text>
+<text x="494" y="312" font-size="19" fill="#43536a" font-weight="400">A 交付：区块 Y → 不符</text>
+<text x="494" y="340" font-size="19" fill="#43536a" font-weight="400">B 交付：值与证明矛盾</text>
+<text x="494" y="368" font-size="19" fill="#43536a" font-weight="400">C 交付：所有要求通过</text>
+<rect x="472" y="394" width="336" height="190" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="494" y="430" font-size="23" fill="#162c49" font-weight="700">逐项证据</text>
+<text x="494" y="464" font-size="19" fill="#43536a" font-weight="400">每项展开请求、响应与证明</text>
+<text x="494" y="492" font-size="19" fill="#43536a" font-weight="400">显示检查规则与证据引用</text>
+<text x="494" y="520" font-size="19" fill="#43536a" font-weight="400">分开：数据结论 / 服务归属</text>
+<text x="494" y="548" font-size="19" fill="#43536a" font-weight="400">显示未知、不适用与未覆盖</text>
+<text x="494" y="576" font-size="19" fill="#43536a" font-weight="400">签名证明归属，不证明正确</text>
+<rect x="472" y="604" width="336" height="142" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="494" y="640" font-size="23" fill="#162c49" font-weight="700">主结果与动作</text>
+<text x="494" y="674" font-size="19" fill="#43536a" font-weight="400">PASS → 状态事实卡</text>
+<text x="494" y="702" font-size="19" fill="#43536a" font-weight="400">FAIL → 拒收，预算内换服务</text>
+<text x="494" y="730" font-size="19" fill="#43536a" font-weight="400">UNVERIFIABLE → 不采用</text>
+<rect x="472" y="766" width="336" height="144" rx="14" fill="#fff5e6" stroke="#e5c48d"/>
+<text x="494" y="802" font-size="23" fill="#162c49" font-weight="700">失败与未知分支</text>
+<text x="494" y="836" font-size="19" fill="#43536a" font-weight="400">缺材料 / 基准冲突 → 说明缺口</text>
+<text x="494" y="864" font-size="19" fill="#43536a" font-weight="400">未签名 → 归属未证明</text>
+<text x="494" y="892" font-size="19" fill="#43536a" font-weight="400">全部失败 → 停止，不伪通过</text>
+<rect x="878" y="214" width="336" height="160" rx="14" fill="#f5f7fb" stroke="#d4deeb"/>
+<text x="900" y="250" font-size="23" fill="#162c49" font-weight="700">证据详情</text>
+<text x="900" y="284" font-size="19" fill="#43536a" font-weight="400">请求、签名、基准和证明</text>
+<text x="900" y="312" font-size="19" fill="#43536a" font-weight="400">规则版本、检查结果与来源</text>
+<text x="900" y="340" font-size="19" fill="#43536a" font-weight="400">内容摘要、适用范围</text>
+<text x="900" y="368" font-size="19" fill="#43536a" font-weight="400">下载经过审阅的公共材料</text>
+<rect x="878" y="394" width="336" height="190" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="900" y="430" font-size="23" fill="#162c49" font-weight="700">第二实例复验</text>
+<text x="900" y="464" font-size="19" fill="#43536a" font-weight="400">独立进程与存储重跑检查</text>
+<text x="900" y="492" font-size="19" fill="#43536a" font-weight="400">比较原结果并报告差异</text>
+<text x="900" y="520" font-size="19" fill="#43536a" font-weight="400">包被修改 → 完整性失败</text>
+<text x="900" y="548" font-size="19" fill="#43536a" font-weight="400">材料缺失 / 规则未知 → 提示</text>
+<text x="900" y="576" font-size="19" fill="#43536a" font-weight="400">不直接信任原报告 PASS</text>
+<rect x="878" y="604" width="336" height="142" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="900" y="640" font-size="23" fill="#162c49" font-weight="700">选择变化对照</text>
+<text x="900" y="674" font-size="19" fill="#43536a" font-weight="400">同任务启用 / 停用适用证据</text>
+<text x="900" y="702" font-size="19" fill="#43536a" font-weight="400">显示候选顺序与复检理由</text>
+<text x="900" y="730" font-size="19" fill="#43536a" font-weight="400">新一轮仍须验收当前交付</text>
+<rect x="878" y="766" width="336" height="144" rx="14" fill="#fff5e6" stroke="#e5c48d"/>
+<text x="900" y="802" font-size="23" fill="#162c49" font-weight="700">发布状态单独显示</text>
+<text x="900" y="836" font-size="19" fill="#43536a" font-weight="400">未请求 / 待发布 / 已确认 / 失败</text>
+<text x="900" y="864" font-size="19" fill="#43536a" font-weight="400">链上摘要不代表验真</text>
+<text x="900" y="892" font-size="19" fill="#43536a" font-weight="400">未部署时明确显示未部署</text>
+<path d="M420,530 H452" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path d="M826,530 H858" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="48" y="978" width="1184" height="128" rx="14" fill="#eaf6f1" stroke="#a9cbbd"/>
+<text x="70" y="1014" font-size="23" fill="#162c49" font-weight="700">共享回流与修复</text>
+<text x="70" y="1048" font-size="19" fill="#43536a" font-weight="400">第二实例复验 → 检查历史证据是否适用 → 调整候选并重新验收。</text>
+<text x="70" y="1076" font-size="19" fill="#43536a" font-weight="400">服务修复后的新交付可以通过；旧记录保留任务、版本和区块范围。重复转发不增加权重。</text>
+<path d="M1046,934 V976" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="48" y="1141" font-size="19" fill="#43536a" font-weight="400">拟议复验命令：z-verify &lt;bundle&gt;（尚未实现）；图中 A / B / C 不代表真实厂商事故。</text>
+</g></svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1210" viewBox="0 0 1280 1210" role="img" aria-labelledby="title desc"><title id="title">Verdict 验收与证据审计架构</title><desc id="desc">拟议系统：任务约束、观测与排序、签名交付、确定性核验、审计报告、证据复验，以及独立的异步存证工作线。所有产品模块尚未实现。</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#486d98"/></marker></defs><rect width="1280" height="1210" fill="#f5f7fb"/><g font-family="'Noto Sans CJK SC','Source Han Sans SC','Microsoft YaHei',sans-serif">
+<text x="48" y="58" font-size="36" fill="#122d4e" font-weight="700">Verdict · 验收与证据审计</text>
+<text x="48" y="94" font-size="22" fill="#43536a" font-weight="400">观测帮助选择 · 核对承诺与交付 · 公开记录供后来者复验</text>
+<rect x="48" y="120" width="1184" height="86" rx="14" fill="#eaf1fb" stroke="#d4deeb"/>
+<text x="70" y="156" font-size="23" fill="#162c49" font-weight="700">融合设计 v0.2｜方案示意，产品尚未实现</text>
+<text x="70" y="190" font-size="19" fill="#43536a" font-weight="400">模型理解与编排；确定性代码核验。P0 / P1 表示计划优先级。</text>
+<rect x="48" y="246" width="1184" height="108" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="70" y="282" font-size="23" fill="#162c49" font-weight="700">任务与验收条件</text>
+<text x="70" y="316" font-size="19" fill="#43536a" font-weight="400">网络 / 账户 / 字段 / 目标区块哈希 / 证据策略 / 调用预算</text>
+<text x="70" y="344" font-size="19" fill="#43536a" font-weight="400">调用前固定要求，报告中保留服务承诺与实际交付的对照。</text>
+<path d="M640,206 V244" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="48" y="398" width="350" height="142" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="70" y="434" font-size="23" fill="#162c49" font-weight="700">真实观测与能力目录</text>
+<text x="70" y="468" font-size="19" fill="#43536a" font-weight="400">声明与实测分开</text>
+<text x="70" y="496" font-size="19" fill="#43536a" font-weight="400">来源、窗口、样本数、限制</text>
+<text x="70" y="524" font-size="19" fill="#43536a" font-weight="400">冻结样本与故障注入另行标识</text>
+<rect x="440" y="398" width="350" height="142" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="462" y="434" font-size="23" fill="#162c49" font-weight="700">过滤与简单排序</text>
+<text x="462" y="468" font-size="19" fill="#43536a" font-weight="400">硬条件 → 适用证据</text>
+<text x="462" y="496" font-size="19" fill="#43536a" font-weight="400">本地观测 → 延迟 / 已知成本</text>
+<text x="462" y="524" font-size="19" fill="#43536a" font-weight="400">输出理由；历史好评不免检</text>
+<rect x="832" y="398" width="400" height="142" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="854" y="434" font-size="23" fill="#162c49" font-weight="700">候选服务交付</text>
+<text x="854" y="468" font-size="19" fill="#43536a" font-weight="400">受控签名服务：错块 / 错值 / 正常</text>
+<text x="854" y="496" font-size="19" fill="#43536a" font-weight="400">公共 RPC：真实观测与限制</text>
+<text x="854" y="524" font-size="19" fill="#43536a" font-weight="400">不冒充底层提供商签名</text>
+<path d="M615,354 V396" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path d="M398,470 H438" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path d="M790,470 H830" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="48" y="590" width="350" height="170" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="70" y="626" font-size="23" fill="#162c49" font-weight="700">独立基准与归属依据</text>
+<text x="70" y="660" font-size="19" fill="#43536a" font-weight="400">区块头、状态根、来源</text>
+<text x="70" y="688" font-size="19" fill="#43536a" font-weight="400">网络归属与最终性策略</text>
+<text x="70" y="716" font-size="19" fill="#43536a" font-weight="400">有效版本的签名密钥授权</text>
+<text x="70" y="744" font-size="19" fill="#43536a" font-weight="400">材料不足时保留未知</text>
+<rect x="440" y="590" width="792" height="170" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="462" y="626" font-size="23" fill="#162c49" font-weight="700">确定性验收核心｜P0</text>
+<text x="462" y="660" font-size="19" fill="#43536a" font-weight="400">请求与区块匹配 → 验签及身份绑定 → 账户证明 → 字段比对</text>
+<text x="462" y="688" font-size="19" fill="#43536a" font-weight="400">分别记录：数据结论、交付归属、原因、材料完整性</text>
+<text x="462" y="716" font-size="19" fill="#43536a" font-weight="400">主结果：PASS / FAIL / UNVERIFIABLE</text>
+<text x="462" y="744" font-size="19" fill="#43536a" font-weight="400">任意存储槽、自由文本真假及完整合约安全不在首版保证范围内</text>
+<path d="M1030,540 V588" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path d="M398,674 H438" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="48" y="810" width="562" height="144" rx="14" fill="#eaf6f1" stroke="#a9cbbd"/>
+<text x="70" y="846" font-size="23" fill="#162c49" font-weight="700">审计报告与执行处置</text>
+<text x="70" y="880" font-size="19" fill="#43536a" font-weight="400">承诺 / 实际交付 / 证据 / 未知项 / 动作</text>
+<text x="70" y="908" font-size="19" fill="#43536a" font-weight="400">通过 → 事实卡；未通过 → 有预算地换服务</text>
+<text x="70" y="936" font-size="19" fill="#43536a" font-weight="400">候选耗尽 → 停止该数据依赖</text>
+<rect x="654" y="810" width="578" height="144" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="676" y="846" font-size="23" fill="#162c49" font-weight="700">证据包与公共索引</text>
+<text x="676" y="880" font-size="19" fill="#43536a" font-weight="400">请求、签名、基准、证明、规则、逐项结果</text>
+<text x="676" y="908" font-size="19" fill="#43536a" font-weight="400">不可变正文 + 内容摘要；索引保留获取位置</text>
+<text x="676" y="936" font-size="19" fill="#43536a" font-weight="400">观察报告与可归属交付证据分别标识</text>
+<path d="M650,760 V785 H330 V808" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path d="M960,760 V808" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="48" y="998" width="562" height="142" rx="14" fill="#ffffff" stroke="#d4deeb"/>
+<text x="70" y="1034" font-size="23" fill="#162c49" font-weight="700">第二实例重新核验｜P0</text>
+<text x="70" y="1068" font-size="19" fill="#43536a" font-weight="400">下载材料 → 重跑检查 → 判断适用性</text>
+<text x="70" y="1096" font-size="19" fill="#43536a" font-weight="400">复验后的证据回到候选选择，并展示变化</text>
+<text x="70" y="1124" font-size="19" fill="#43536a" font-weight="400">独立进程不自动代表独立主体背书</text>
+<rect x="654" y="998" width="578" height="142" rx="14" fill="#fff5e6" stroke="#e5c48d"/>
+<text x="676" y="1034" font-size="23" fill="#162c49" font-weight="700">异步发布｜本地 / 测试验证与主网分开</text>
+<text x="676" y="1068" font-size="19" fill="#43536a" font-weight="400">拟议 BOT Chain 摘要；ERC-8004 身份 / 记录关联</text>
+<text x="676" y="1096" font-size="19" fill="#43536a" font-weight="400">发布状态独立显示，存证不代表内容已验真</text>
+<text x="676" y="1124" font-size="19" fill="#43536a" font-weight="400">主网网络、ABI、费用与交易授权另行落实</text>
+<path d="M944,954 V976 H330 V996" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path d="M1050,954 V996" fill="none" stroke="#486d98" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="48" y="1181" font-size="19" fill="#43536a" font-weight="400">P1：PI / 模型、完整 SDK 与 MCP、复杂聚合、支付研究。其他审计场景需专用适配与验证。</text>
+</g></svg>
