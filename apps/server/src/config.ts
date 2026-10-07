@@ -63,7 +63,18 @@ export const AgentConfigSchema = z.strictObject({
     .default([]),
 });
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
+export const WalletConfigSchema = z.strictObject({
+  networks: z.array(z.strictObject({
+    chainId: z.string().regex(/^0x[1-9a-f][0-9a-f]{0,15}$/), name: z.string().min(1).max(80),
+    rpcUrlEnv: z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
+    maxValueWei: DecimalSchema, maxTotalFeeWei: DecimalSchema,
+  })).min(1).max(8).refine(v => new Set(v.map(n => n.chainId)).size === v.length),
+  rpcTimeoutMs: z.number().int().min(100).max(15000).default(8000),
+  reviewTimeoutMs: z.number().int().min(100).max(180000).default(90000),
+  permitTtlMs: z.number().int().min(100).max(120000).default(60000),
+});
 export const ServerConfigSchema = z.strictObject({
+  wallet: WalletConfigSchema.optional(),
   observability:z.strictObject({
     endpoint:z.string().url().refine(value=>{const u=new URL(value);return u.protocol==='http:'&&['127.0.0.1','localhost'].includes(u.hostname)&&u.pathname==='/'&&!u.search&&!u.hash&&!u.username&&!u.password;},'Observer must be a loopback HTTP origin').transform(v=>v.replace(/\/$/,'')),
     tokenEnv:z.string().regex(/^[A-Z_][A-Z0-9_]*$/),

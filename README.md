@@ -105,6 +105,10 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 
 已接入独立任务边界、PI 执行前外审与范围硬拦截；未配置 `guard` 时直接 PI 入口不可用，固定流程仍可运行且未启用外审。安全报告／规则 API 与本地维护命令已加入。GLM 5.3＋DeepSeek 曾完成真实替换验收；最新按用户选择改为 GLM 5.3 执行与独立 GLM 5.3 行为外审，同模型首次联调在第三次审查时耗尽 180 秒预算，尚未完成替换；语义复验仅为独立模型判断，规则启用使用本地维护命令，见 [实现与限制](docs/20-Verdict-Guard.md)。
 
+## 钱包签名前审查
+
+新增“钱包审查”页面：连接浏览器钱包后，普通原生币转账会先经过确定性参数检查、配置 RPC 预执行和 PI 自动审查，只有一次性短时许可通过后才调用钱包签名。服务器不持有私钥、不广播交易；合约调用、代币授权、permit 和第三方 DApp 交易暂未放行。配置与限制见 [钱包签名前审查](docs/23-钱包签名前审查.md)。
+
 ## PI 行为看板
 
 已接入固定版本的 [Pi Observability](https://github.com/disler/pi-agent-observability)，展示拟执行动作、Guard 审查、许可消费、实际工具结果与 A 验收。`npm run obs:install` 安装，`npm run obs:start` 启动本地只读看板；任务页提供对应时间线链接。安装、后端配置、停止与验证命令见 [接入说明](integrations/pi-observability/README.md)。观测只接收脱敏字段，不改变验收或拦截权限。

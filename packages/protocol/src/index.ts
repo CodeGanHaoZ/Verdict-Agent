@@ -339,3 +339,5 @@ export const AgentGraphRecordingSchema=z.strictObject({
   provenance:z.literal('REAL_SIGNED_DEMO_SERVICES_AND_A_KERNEL'),source:z.enum(['LIVE','TEST_TRANSPORT']),page:AgentGraphPageSchema,
 });
 export type AgentGraphRecording=z.infer<typeof AgentGraphRecordingSchema>;
+
+export * from "./wallet.js";

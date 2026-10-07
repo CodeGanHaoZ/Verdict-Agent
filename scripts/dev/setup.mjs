@@ -132,6 +132,12 @@ for (const [index, instanceId] of ["local-one", "local-two"].entries()) {
     corsOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
     historyMaxAgeMs: 86400000,
     publicationAdapter: "not_configured",
+    wallet: {
+      networks: [{ chainId: "0x1", name: "Ethereum Mainnet (operator RPC)", rpcUrlEnv: "VERDICT_WALLET_RPC_URL", maxValueWei: "100000000000000000", maxTotalFeeWei: "10000000000000000" }],
+      rpcTimeoutMs: 8000,
+      reviewTimeoutMs: 90000,
+      permitTtlMs: 60000,
+    },
     contexts: [context],
     services,
   });
