@@ -1,0 +1,373 @@
+diff --git a/apps/observability/db.ts b/apps/observability/db.ts
+index cf2cbbd..ec7f41e 100644
+--- a/apps/observability/db.ts
++++ b/apps/observability/db.ts
+@@ -111,7 +111,7 @@ export function prepare(db: Database): PreparedQueries {
+     INSERT INTO sessions
+       (session_id, pool, agent_name, cwd, session_file, provider, model, first_ts, last_ts, event_count, tags_json)
+     VALUES
+-      ($session_id, $pool, $agent_name, $cwd, $session_file, $provider, $model, $ts, $ts, 1, $tags_json)
++      ($session_id, $pool, $agent_name, $cwd, $session_file, $provider, $model, $ts, $ts, 0, $tags_json)
+     ON CONFLICT(session_id) DO UPDATE SET
+       pool         = COALESCE(excluded.pool,         sessions.pool),
+       agent_name   = COALESCE(excluded.agent_name,   sessions.agent_name),
+diff --git a/apps/observability/public/app.js b/apps/observability/public/app.js
+index 7378009..ce3b893 100644
+--- a/apps/observability/public/app.js
++++ b/apps/observability/public/app.js
+@@ -7,9 +7,8 @@
+ // ─── State ──────────────────────────────────────────────────────────────────
+ 
+ const STATE = {
+-  // V3 regression fix: token must come from ?token=… query param. The hash is
+-  // for shareable view-state only; we don't want the token in shared URLs.
+-  token: new URLSearchParams(location.search).get("token") ?? "",
++  // Verdict: loopback read-only browser; ingest credentials never enter the UI.
++  token: "",
+   view: "single", mode: "form", pool: "", tag: "", search: "", sort: "latest", hideAfter: "30m", showHidden: false,
+   typeFilter: new Set(), autoScroll: true,
+   selectedSessionId: null, sessions: [], events: [], sessionsLoaded: false, hiddenSessions: loadHiddenSessions(),
+@@ -141,7 +140,12 @@ function summaryFor(evt) {
+     case "compaction": return `📦 compact · ${p.tokens_before ?? "?"} tk → "${trunc(p.summary_preview, 60)}"`;
+     case "branch_nav": return `🌿 branch · ${shortId(p.from_id)} → ${shortId(p.to_id)}`;
+     case "error": return `! ${trunc(p.message, 100)}`;
+-    case "custom": return `${p.custom_type ?? "custom"}`;
++    case "custom": {
++      const d=p.data??{};
++      const label={"verdict.tool_start":"PI 工具提议（尚未执行）","verdict.reviewer_request":"外审请求","verdict.reviewer_timing":"外审耗时","verdict.model_request":"执行模型请求","verdict.model_response":"执行模型耗时","verdict.action_proposed":"拟执行动作","verdict.guard_decision":"外审决定","verdict.permit_consumed":"许可消费","verdict.action_executed":"动作已执行","verdict.tool_end":"工具结果","verdict.status":"任务状态","verdict.model_usage":"模型用量","verdict.boundary_locked":"边界已锁定"}[p.custom_type]??p.custom_type??"custom";
++      const detail=[d.action??d.tool??d.role,d.serviceId,d.verdict??d.status,d.reasonCode,d.modelId,d.totalMs!=null?d.totalMs+"ms":null,d.adopted?"已采用":null,...(d.attempts??[]).map(a=>`${a.serviceId}: ${a.verification?.verdict??a.runtimeReason??"UNKNOWN"}`)].filter(Boolean).join(" · ");
++      return `${label} ${detail}`;
++    }
+     default: return "";
+   }
+ }
+@@ -278,7 +282,7 @@ function computeAgentInfo(sid) {
+     model: s.model || "", provider: s.provider || "",
+     tags: s.tags || [], pool: s.pool || "default",
+     eventCount: s.event_count ?? events.length,
+-    durationMs, cost: stats.total_cost ?? 0,
++    durationMs, cost: stats.cost_known===false?null:(stats.total_cost ?? 0),
+     inputTokens, outputTokens, cacheRead, cacheWrite,
+     totalTokens: stats.total_tokens ?? (inputTokens + outputTokens),
+     contextUsed, contextTotal, contextRemaining, contextRemainingPct,
+@@ -319,7 +323,7 @@ function renderAgentSubnav() {
+     <div class="snav-group snav-stats">
+       <div class="snav-stat"><span class="snav-label">events</span><span class="snav-value">${info.eventCount}</span></div>
+       <div class="snav-stat"><span class="snav-label">duration</span><span class="snav-value">${fmtDuration(info.durationMs)}</span></div>
+-      <div class="snav-stat snav-cost-pill"><span class="snav-label">cost</span><span class="snav-value snav-cost">$${info.cost.toFixed(4)}</span></div>
++      <div class="snav-stat snav-cost-pill"><span class="snav-label">cost</span><span class="snav-value snav-cost">${info.cost===null?"未知":"$"+info.cost.toFixed(4)}</span></div>
+       <div class="snav-stat"><span class="snav-label">in</span><span class="snav-value">${fmtTokens(info.inputTokens)}</span></div>
+       <div class="snav-stat"><span class="snav-label">out</span><span class="snav-value">${fmtTokens(info.outputTokens)}</span></div>
+       <!-- Form mode: dual cache pills (per obv-flash). Function mode: single combined pill (CSS hides .snav-cache-r/.snav-cache-w and shows .snav-cache-combined). -->
+@@ -330,7 +334,7 @@ function renderAgentSubnav() {
+       <div class="snav-stat snav-perf" title="estimated output tokens/sec on the most recent assistant turn (post-prefill). Approximated from streaming delta timing — accurate within a single-batch arrival window; turns with gen_ms &lt; 50ms are suppressed to avoid measurement noise."><span class="snav-label">~TPS</span><span class="snav-value">${info.latestOutputTps != null ? info.latestOutputTps : "—"}</span></div>
+       <div class="snav-stat snav-perf" title="prefill (time-to-first-token) on the most recent assistant turn"><span class="snav-label">prefill</span><span class="snav-value">${info.latestPrefillMs != null ? info.latestPrefillMs + "ms" : "—"}</span></div>
+     </div>
+-    <div class="snav-group snav-context">
++    <div class="snav-group snav-context" ${info.tags.includes("metadata-only") ? 'style="display:none"' : ""}>
+       <div class="snav-context-top">
+         <span class="snav-label">context</span>
+         <span class="snav-context-fig">${fmtTokens(info.contextUsed)} / ${fmtTokens(info.contextTotal)}</span>
+@@ -552,7 +556,7 @@ function renderSessions() {
+     el.className = "session-item" + (isSel ? " selected" : "") + ((hiddenByUser || hiddenByAge) ? " hidden-session" : "");
+     const shortId = s.session_id.slice(0, 8);
+     const stats = STATE.sessionStats[s.session_id];
+-    const costStr = stats ? `$${stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk` : "";
++    const costStr = stats ? `${stats.cost_known===false?"费用未知":"$"+stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk` : "";
+     const hasErr = stats && stats.error_count > 0;
+     const isAckd = STATE.ackd.has(s.session_id);
+     const errDotHtml = hasErr ? ` <span class="err-dot${isAckd ? ' ackd' : ''}">●</span>` : '';
+@@ -570,7 +574,7 @@ function renderSessions() {
+ 
+     const info = document.createElement("div");
+     info.className = "info";
+-    info.innerHTML = `<div class="name">${escapeHtml(name)}${errDotHtml}${hiddenNote}</div><div class="uuid">${shortId}${s.model ? " · " + s.model : ""}</div><div class="meta">${s.pool} · ${s.event_count} events · ${relTime}</div>${costStr ? `<div class="cost">${costStr}</div>` : ""}`;
++    info.innerHTML = `<div class="name">${escapeHtml(name)}${errDotHtml}${hiddenNote}</div><div class="uuid">${shortId}${s.model ? " · " + escapeHtml(s.model) : ""}</div><div class="meta">${escapeHtml(s.pool)} · ${s.event_count} events · ${relTime}</div>${costStr ? `<div class="cost">${costStr}</div>` : ""}`;
+ 
+     if (STATE.view === "single") {
+       el.addEventListener("click", () => selectSession(s.session_id));
+@@ -608,7 +612,7 @@ function buildMiniSessionItem(s) {
+   el.dataset.sid = s.session_id;
+   const name = s.agent_name ?? s.cwd?.split("/").pop() ?? s.session_id;
+   const stats = STATE.sessionStats[s.session_id];
+-  const costStr = stats ? ` · $${stats.total_cost.toFixed(4)}` : "";
++  const costStr = stats ? ` · ${stats.cost_known===false?"费用未知":"$"+stats.total_cost.toFixed(4)}` : "";
+   el.title = `${name}\n${s.session_id.slice(0, 8)} · ${s.event_count} events · ${fmtRel(s.last_ts)}${costStr}`;
+   el.textContent = agentLetter(s);
+   const dot = document.createElement("span");
+@@ -746,7 +750,7 @@ function buildEventRow(evt, idx, isLive = false) {
+   const row = document.createElement("div");
+   row.className = "evt-row" + (idx === STATE.focusedIdx ? " focused" : "");
+   row.dataset.idx = idx;
+-  row.innerHTML = `<span class="evt-ts">${fmtTs(evt.ts)}</span><span class="evt-type"><span class="pill ${evt.type}">${evt.type.replace(/_/g," ")}</span>${toolNamePillHTML(evt)}</span><span class="evt-summary ${summaryClass(evt)}">${summaryFor(evt)}</span>`;
++  row.innerHTML = `<span class="evt-ts">${fmtTs(evt.ts)}</span><span class="evt-type"><span class="pill ${evt.type}">${evt.type.replace(/_/g," ")}</span>${toolNamePillHTML(evt)}</span><span class="evt-summary ${summaryClass(evt)}">${escapeHtml(summaryFor(evt))}</span>`;
+ 
+   if (isLive && typeof window.__pulseColorFor === "function") {
+     row.style.setProperty("--pulse-color", window.__pulseColorFor(evt.type));
+diff --git a/apps/observability/public/index.html b/apps/observability/public/index.html
+index 7ba14e2..81ac50f 100644
+--- a/apps/observability/public/index.html
++++ b/apps/observability/public/index.html
+@@ -3,7 +3,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>Pi Observability</title>
++  <title>Verdict · Pi Observability</title>
+   <link rel="icon" type="image/svg+xml" href="logo.svg">
+   <style>
+     :root {
+@@ -385,6 +385,7 @@
+ </head>
+ <body class="layout-form">
+ 
++<div style="padding:10px 16px;background:#14222a;color:#bdebd6;font:13px system-ui">Verdict 行为观测 · 仅展示脱敏事实 · 外审、数据验收与发布状态相互独立 · 不采集任务原文或隐藏推理</div>
+ <header>
+   <div class="brand-logo-container" style="display:flex;align-items:center;gap:10px">
+     <svg width="28" height="28" viewBox="0 0 100 100" style="flex-shrink:0" xmlns="http://www.w3.org/2000/svg">
+diff --git a/apps/observability/public/race.js b/apps/observability/public/race.js
+index 7f8dc0f..a32d7c6 100644
+--- a/apps/observability/public/race.js
++++ b/apps/observability/public/race.js
+@@ -106,7 +106,7 @@ window.__raceAutoAddChange = function(val) { autoAddRaceTracks = val; };
+ window.__raceStatsUpdate = function(sid, stats) {
+   const track = TRACKS.get(sid);
+   if (!track) return;
+-  track.costStr = `$${stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk`;
++  track.costStr = `${stats.cost_known===false?"费用未知":"$"+stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk`;
+   renderTrack(sid);
+ };
+ 
+@@ -123,7 +123,7 @@ function createTrack(sid) {
+   raceContainer.appendChild(el);
+ 
+   const stats = STATE.sessionStats[sid];
+-  const costStr = stats ? `$${stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk` : "";
++  const costStr = stats ? `${stats.cost_known===false?"费用未知":"$"+stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk` : "";
+   TRACKS.set(sid, { session: sess, events: [], lastSeq: -1, el, costStr, activeGroupKey: null });
+   updateEmpty();
+   loadTrackEvents(sid);
+@@ -398,7 +398,7 @@ function updateRaceRollup() {
+       tokens += u.total_tokens ?? 0;
+     }
+   }
+-  raceRollup.textContent = `$${cost.toFixed(4)} · ${fmtTokens(tokens)} tk`;
++  raceRollup.textContent = `${Object.values(STATE.sessionStats).some(s=>s.cost_known===false)?"费用未知":"$"+cost.toFixed(4)} · ${fmtTokens(tokens)} tk`;
+ }
+ 
+ function scrollRaceToRight() {
+diff --git a/apps/observability/public/swimlane.js b/apps/observability/public/swimlane.js
+index e715995..a01996b 100644
+--- a/apps/observability/public/swimlane.js
++++ b/apps/observability/public/swimlane.js
+@@ -96,7 +96,7 @@ window.__swimlaneGetLanes = () => Array.from(LANES.keys());
+ window.__swimlaneStatsUpdate = function(sid, stats) {
+   const lane = LANES.get(sid);
+   if (!lane) return;
+-  lane.costStr = `$${stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk`;
++  lane.costStr = `${stats.cost_known===false?"费用未知":"$"+stats.total_cost.toFixed(4)} · ${fmtTokens(stats.total_tokens)} tk`;
+   updateLaneHeader(sid);
+ };
+ 
+@@ -128,11 +128,11 @@ function createLane(sid) {
+ 
+   const header = document.createElement("div");
+   header.className = "lane-header";
+-  const costStr = (STATE.sessionStats[sid]?.total_cost !== undefined) ? `$${STATE.sessionStats[sid].total_cost.toFixed(4)}` : "";
++  const costStr = (STATE.sessionStats[sid]?.total_cost !== undefined) ? `${STATE.sessionStats[sid].cost_known===false?"费用未知":"$"+STATE.sessionStats[sid].total_cost.toFixed(4)}` : "";
+   header.innerHTML = `
+     <span class="lane-dot off" id="lane-dot-${sid}"></span>
+     <span class="lane-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+-    <span class="lane-model">${sess?.model ?? ""}</span>
++    <span class="lane-model">${escapeHtml(sess?.model ?? "")}</span>
+     <span class="lane-cost" id="lane-cost-${sid}">${costStr}</span>
+     <span id="lane-age-${sid}" style="color:var(--muted);font-size:8px;margin-left:auto;"></span>
+     <button class="lane-close" title="Close lane" onclick="event.stopPropagation();window.__swimlaneToggle('${sid}')">×</button>
+@@ -214,6 +214,7 @@ async function loadLaneEvents(sid) {
+     lane.lastSeq = events[events.length - 1].seq;
+     renderLaneBody(sid);
+     updateLaneAge(sid);
++    updateLaneRow2(sid);
+   }
+ }
+ 
+@@ -268,7 +269,7 @@ function appendLaneDOM(sid, evt, isLive = false) {
+ 
+   const row = document.createElement("div");
+   row.className = "lane-evt";
+-  row.innerHTML = `<span class="lane-evt-ts">${fmtTs(evt.ts)}</span><span class="lane-evt-type"><span class="pill ${evt.type}">${evt.type.replace(/_/g," ")}</span>${toolNamePillHTML(evt)}</span><span class="lane-evt-summary ${summaryClass(evt)}">${summaryFor(evt)}</span>`;
++  row.innerHTML = `<span class="lane-evt-ts">${fmtTs(evt.ts)}</span><span class="lane-evt-type"><span class="pill ${evt.type}">${evt.type.replace(/_/g," ")}</span>${toolNamePillHTML(evt)}</span><span class="lane-evt-summary ${summaryClass(evt)}">${escapeHtml(summaryFor(evt))}</span>`;
+ 
+   if (isLive) {
+     row.style.setProperty("--pulse-color", pulseColorFor(evt.type));
+@@ -337,6 +338,14 @@ function updateLaneRow2(sid) {
+   const row2 = document.getElementById(`lane-row2-${sid}`);
+   if (!row2) return;
+   const events = lane.events || [];
++  if(lane.session?.pool==='verdict'){
++    const latest=new Map();for(const event of events){if(event.payload?.custom_type==='verdict.model_usage'){const u=event.payload.data;latest.set(u.role,u);}}
++    const stats=STATE.sessionStats[sid];
++    const input=stats?.input_tokens??[...latest.values()].reduce((n,u)=>n+u.inputTokens,0);
++    const output=stats?.output_tokens??[...latest.values()].reduce((n,u)=>n+u.outputTokens,0);
++    row2.innerHTML=`<span>${events.length} ev</span><span>in ${fmtTokens(input)}</span><span>out ${fmtTokens(output)}</span><span>ctx 未采集</span>`;
++    return;
++  }
+   let inTok = 0, outTok = 0, latestInput = null;
+   for (const e of events) {
+     if (e.type !== "assistant_message") continue;
+diff --git a/apps/observability/server.ts b/apps/observability/server.ts
+index 4fd3985..cb93cfb 100644
+--- a/apps/observability/server.ts
++++ b/apps/observability/server.ts
+@@ -15,7 +15,8 @@ import type { ObsEvent } from "../../shared/types.js";
+ // ─── Config ─────────────────────────────────────────────────────────────────
+ 
+ const PORT = parseInt(process.env.OBS_PORT ?? "43190", 10);
+-const HOST = process.env.OBS_HOST ?? "127.0.0.1";
++const HOST = "127.0.0.1";
++const LOCAL_READONLY = process.env.OBS_LOCAL_READONLY === "1";
+ // Resolve database path: if OBS_DB_PATH env is set, use it as is.
+ // Otherwise, default to the "db/obs.db" directory relative to the project root.
+ const PROJECT_ROOT = path.resolve(import.meta.dir, "../..");
+@@ -24,12 +25,14 @@ const DB_PATH = process.env.OBS_DB_PATH ?? DEFAULT_DB_PATH;
+ 
+ // Ensure parent folder exists (e.g. "db/" directory) before initializing SQLite
+ fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+-const AUTH_TOKEN = process.env.OBS_AUTH_TOKEN ?? crypto.randomUUID?.() ?? "dev";
+-const VERSION = "0.1.0";
++const AUTH_TOKEN = process.env.OBS_AUTH_TOKEN;
++if (!AUTH_TOKEN || AUTH_TOKEN.length < 32) throw new Error("OBS_AUTH_TOKEN must be configured");
++const VERSION = "0.1.0-verdict";
++const LAUNCH_ID = process.argv.includes("--launch-id") ? process.argv[process.argv.indexOf("--launch-id")+1] : "foreground";
+ // Browser-openable UI URL with the token baked in. The UI's API + SSE calls are
+ // auth-walled, so opening the bare host:port (no ?token=) yields a blank UI.
+ // Print this so copy/paste straight from the boot banner just works.
+-const OPEN_URL = `http://${HOST}:${PORT}/?token=${encodeURIComponent(AUTH_TOKEN)}`;
++const OPEN_URL = `http://${HOST}:${PORT}/`;
+ 
+ // ─── Init ───────────────────────────────────────────────────────────────────
+ 
+@@ -39,7 +42,7 @@ const startTime = Date.now();
+ 
+ console.log(`\n  pi-observability server v${VERSION}`);
+ console.log(`  UI:    ${OPEN_URL}`);
+-console.log(`  Token: ${AUTH_TOKEN}`);
++
+ console.log(`  DB:    ${DB_PATH}\n`);
+ 
+ // ─── SSE subscriber registry ────────────────────────────────────────────────
+@@ -106,14 +109,14 @@ setInterval(() => {
+ function jsonResponse(body: unknown, status = 200): Response {
+   return new Response(JSON.stringify(body), {
+     status,
+-    headers: { "content-type": "application/json", "access-control-allow-origin": "*" },
++    headers: { "content-type": "application/json", "referrer-policy": "no-referrer" },
+   });
+ }
+ 
+ function textResponse(body: string, status: number, contentType: string): Response {
+   return new Response(body, {
+     status,
+-    headers: { "content-type": contentType, "access-control-allow-origin": "*" },
++    headers: { "content-type": contentType, "referrer-policy": "no-referrer" },
+   });
+ }
+ 
+@@ -145,6 +148,8 @@ function checkAuth(req: Request): boolean {
+  */
+ function ingestEvent(event: ObsEvent): string | null {
+   const row = toRow(event);
++  // Establish the session before inserting its foreign-key child.
++  q.upsertSessionNoBump.run(toSessionRow(event));
+   const result = q.insertEvent.run(row);
+   const isNew = result.changes > 0;
+ 
+@@ -168,7 +173,10 @@ async function readBody(req: Request): Promise<string> {
+   if (len > MAX_REQUEST_BYTES) {
+     throw new Error("Payload too large");
+   }
+-  return await req.text();
++  if (!req.body) return "";
++  const reader=req.body.getReader(),chunks:Uint8Array[]=[];let size=0;
++  while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_REQUEST_BYTES){await reader.cancel();throw new Error("Payload too large");}chunks.push(value);}
++  return Buffer.concat(chunks).toString("utf8");
+ }
+ 
+ // ─── MIME types for static files ────────────────────────────────────────────
+@@ -186,7 +194,9 @@ const MIME: Record<string, string> = {
+ function serveStatic(pathname: string): Response | null {
+   // Remove leading slash and guard against path traversal
+   const safe = pathname.replace(/^\/+/, "").replace(/\.\./g, "");
+-  const filePath = `${import.meta.dir}/public/${safe}`;
++  const publicDir=path.resolve(import.meta.dir,"public");
++  const filePath=path.resolve(publicDir,safe);
++  if(!filePath.startsWith(publicDir+path.sep))return textResponse("not found",404,"text/plain");
+   const file = Bun.file(filePath);
+   const mimeKey = safe.slice(safe.lastIndexOf(".")) || ".html";
+   return new Response(file, {
+@@ -214,13 +224,17 @@ async function handle(req: Request): Promise<Response> {
+   const url = new URL(req.url);
+   const pathname = url.pathname;
+   const method = req.method.toUpperCase();
++  const host = req.headers.get("host");
++  if (![`${HOST}:${PORT}`, `localhost:${PORT}`].includes(host ?? "")) return jsonResponse({error:"HOST_NOT_ALLOWED"},403);
++  const origin=req.headers.get("origin");
++  if ((origin && ![`http://${HOST}:${PORT}`, `http://localhost:${PORT}`].includes(origin)) || req.headers.get("sec-fetch-site")==="cross-site") return jsonResponse({error:"ORIGIN_NOT_ALLOWED"},403);
+ 
+   // OPTIONS — CORS preflight
+   if (method === "OPTIONS") {
+     return new Response(null, {
+       status: 204,
+       headers: {
+-        "access-control-allow-origin": "*",
++        "referrer-policy": "no-referrer",
+         "access-control-allow-methods": "GET, POST, OPTIONS",
+         "access-control-allow-headers": "Authorization, Content-Type",
+       },
+@@ -235,6 +249,7 @@ async function handle(req: Request): Promise<Response> {
+       const totals = q.countTotals.get() as any;
+       return jsonResponse({
+         ok: true,
++        launchId: LAUNCH_ID,
+         version: VERSION,
+         uptime_s: Math.round((Date.now() - startTime) / 1000),
+         events_total: totals.events_total ?? 0,
+@@ -258,7 +273,7 @@ async function handle(req: Request): Promise<Response> {
+   }
+ 
+   // ── Auth wall for everything else ──────────────────────────────────────
+-  if (!checkAuth(req)) {
++  if (!(LOCAL_READONLY && method === "GET") && !checkAuth(req)) {
+     return jsonResponse({ error: "unauthorized" }, 401);
+   }
+ 
+@@ -293,6 +308,7 @@ async function handle(req: Request): Promise<Response> {
+       evt.seq = typeof evt.seq === "number" ? evt.seq : 0;
+       evt.cwd = evt.cwd ?? "";
+ 
++      if(typeof evt.session_id!=="string" || !/^[a-f0-9-]{36}$/.test(evt.session_id) || !/^[a-f0-9-]{36}$/.test(evt.event_id) || !['session_start','session_shutdown','custom','turn_start','turn_end'].includes(evt.type) || !Number.isSafeInteger(evt.seq) || evt.seq<0 || typeof evt.ts!=="string" || !Array.isArray(evt.tags)) return jsonResponse({error:"invalid event"},400);
+       const ingestedId = ingestEvent(evt as ObsEvent);
+       if (ingestedId) {
+         ingested.push(ingestedId);
+@@ -367,7 +383,12 @@ async function handle(req: Request): Promise<Response> {
+     try {
+       const row = q.getSessionStats.get({ $session_id: sidStats }) as any;
+       const ctx = q.getSessionContext.get({ $session_id: sidStats }) as any;
++      const usages=db.query("SELECT payload_json FROM events WHERE session_id=? AND type='custom' AND json_extract(payload_json,'$.custom_type')='verdict.model_usage' ORDER BY seq").all(sidStats) as {payload_json:string}[];
++      const latest=new Map<string,any>();for(const value of usages){const data=JSON.parse(value.payload_json).data;latest.set(data.role,data);}
++      if(latest.size){const values=[...latest.values()];row.total_tokens=values.reduce((n,u)=>n+u.inputTokens+u.outputTokens+u.cacheReadTokens+u.cacheWriteTokens,0);row.input_tokens=values.reduce((n,u)=>n+u.inputTokens,0);row.output_tokens=values.reduce((n,u)=>n+u.outputTokens,0);row.total_cost=values.every(u=>u.costUsd!==null)?values.reduce((n,u)=>n+u.costUsd,0):null;}
++      const hasVerdict=db.query("SELECT 1 AS present FROM events WHERE session_id=? AND pool='verdict' LIMIT 1").get(sidStats);
+       return jsonResponse({
++        cost_known:hasVerdict ? latest.size>0 && [...latest.values()].every(u=>u.costUsd!==null) : true,
+         total_tokens: row.total_tokens ?? 0,
+         input_tokens: row.input_tokens ?? 0,
+         output_tokens: row.output_tokens ?? 0,
+@@ -407,7 +428,7 @@ async function handle(req: Request): Promise<Response> {
+         "content-type": "text/event-stream",
+         "cache-control": "no-cache",
+         "connection": "keep-alive",
+-        "access-control-allow-origin": "*",
++        "referrer-policy": "no-referrer",
+       },
+     });
+   }

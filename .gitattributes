@@ -6,3 +6,7 @@
 *.webp binary
 *.pdf binary
 *.zip binary
+
+# Preserve upstream patch context and licensed text byte-for-byte.
+integrations/pi-observability/upstream.patch -whitespace
+fixtures/redteam/indirect-v1/LICENSE.BIPIA -whitespace

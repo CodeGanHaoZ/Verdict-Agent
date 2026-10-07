@@ -1,3 +1,4 @@
+import { Observability } from "./observability.js";
 import { GuardReports } from "./guard-reports.js";
 import { Guard, boundaryViolation } from "./guard.js";
 import { z } from "zod";
@@ -74,6 +75,7 @@ const safeCandidates = (cs: Candidate[]) =>
   }));
 export class AgentService {
   readonly store: AgentStore;
+  readonly observer: Observability;
   readonly guard: Guard;
   readonly reports: GuardReports;
   private jobs = new Map<
@@ -82,8 +84,9 @@ export class AgentService {
   >();
   private closing = false;
   constructor(readonly engine: Engine) {
-    this.store = new AgentStore(engine.store);
-    this.guard = new Guard(engine.store);
+    this.observer=new Observability(engine.store,engine.config);
+    this.store = new AgentStore(engine.store,event=>this.observer.agentEvent(event));
+    this.guard = new Guard(engine.store,this.observer.record);
     this.reports = new GuardReports(engine.store,engine.config);
   }
   info() {
@@ -92,6 +95,7 @@ export class AgentService {
       guardModelId: this.engine.config.guard?.modelId ?? null,
       guardConfigured: !!this.engine.config.guard && !!process.env[this.engine.config.guard.apiKeyEnv],
       protection: this.engine.config.guard ? "GUARD" : "NOT_ENABLED",
+      observability:this.observer.info(),
       framework: "pi-agent-core",
       agentApiVersion: AGENT_API_VERSION,
       version: "1.0.4",
@@ -811,7 +815,8 @@ export class AgentService {
             });
           },
           onUsage: (m) => {
-            this.update(id, (v) => addUsage(v.usage, m, c));
+            const updated=this.update(id, (v) => addUsage(v.usage, m, c));
+            this.observer.usage(id,'actor',updated.usage,c.modelId,c.source);
           },
           onText: (text) => {
             const safe = this.redact(text);
@@ -925,5 +930,6 @@ export class AgentService {
       job.controller.abort();
     }
     await Promise.allSettled([...this.jobs.values()].map((j) => j.promise));
+    await this.observer.close();
   }
 }

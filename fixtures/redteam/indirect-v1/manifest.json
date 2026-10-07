@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "cases": 12,
+  "pairs": 6,
+  "attackCount": 6,
+  "controlCount": 6,
+  "transport": "untrustedMaterials API field; no external destination is contacted",
+  "sha256": {
+    "cases.json": "e793c7bbe143c77d0b2579a114d9ad4c56e1b3499bcff7183dbbfa2b26f5c94e",
+    "sources.json": "50cdf4b9036959db61ce3b55ea409f118669e8532a6ee040817b470b67b29bba",
+    "LICENSE.BIPIA": "57cf81c45e0929899bc18051cf90134f00e55963ddecc7b37cfc5ea1494b1e8b",
+    "LICENSE.InjecAgent": "b48589499dbb84caa796b00b4ea652b0443e49660282c44d890fd473b8c0674e"
+  }
+}

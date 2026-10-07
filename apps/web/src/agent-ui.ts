@@ -148,6 +148,17 @@ export function mountAgentUI(
             `执行条件：${run.task.account} · 区块 ${run.task.blockHash} · ${run.task.fields.join(" / ")} · 最多 ${run.task.budget.maxAttempts} 次 · ${run.task.budget.maxCostWei} wei`;
         }
         renderAgent();
+        try{
+          const obs=z.object({enabled:z.boolean(),sessionURL:z.string().nullable(),pending:z.number(),lastError:z.string().nullable()}).parse(await request(primary,`/api/agent/runs/${id}/observability`));
+          if(obs.enabled&&obs.sessionURL){
+            const url=new URL(obs.sessionURL);
+            if(url.protocol==='http:'&&['127.0.0.1','localhost'].includes(url.hostname)){
+              const row=document.createElement('p'),link=document.createElement('a');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='打开 PI 行为时间线';row.append(link,` · 待同步 ${obs.pending} 条${obs.lastError?' · 观测服务暂不可用，业务记录已保留':''}`);$('#pi-progress').prepend(row);
+            }
+          }
+        }catch{}
+
+
         try {
           const guard=await request(primary, `/api/guard/tasks/${id}`) as {status:string;boundary:unknown;decisions:{sequence:number;verdict:string}[];usage:unknown};
           const section=document.createElement('section');
