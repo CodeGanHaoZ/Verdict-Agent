@@ -25,3 +25,6 @@ PI 默认 requestTimeoutMs=90000、firstEventTimeoutMs=60000、streamIdleTimeout
 钱包页只支持本页发起的普通原生币转账：浏览器通过 EIP-6963／注入 provider 读取账户和链，服务器检查明确意图、账户／链／收款人／金额／费用、nonce、余额、代码、`eth_call`、`eth_estimateGas`，然后由 PI 读取这些实际检查结果并提交 ALLOW/BLOCK/UNCERTAIN。服务器不持有私钥，也不广播交易；浏览器在一次性、短时许可消费后调用钱包的 `eth_sendTransaction`。账户、链、交易参数或预执行状态变化会使许可失效。
 
 合约调用、ERC-20 授权、permit、批量操作和第三方 DApp 交易暂不放行；预执行通过不保证未来链上状态或合约安全。测试网／主网 RPC、钱包连接和任何交易广播需由操作者自行授权。
+
+
+BOT Chain 测试网可用独立本地配置覆盖主网示例：`npm run wallet:configure-network -- .local/botchain-testnet/local-one.json bot-testnet`。它写入 chainId `0x3c8`、`https://rpc.bohr.life` 对应的环境变量名和低额上限；测试网 tBOT 从官方 Faucet 领取，私钥继续留在浏览器钱包。
