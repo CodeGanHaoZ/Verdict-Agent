@@ -13,4 +13,4 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 
 上下文必须由运行者自行接受，不能因为它与证据一起收到就信任。CLI 不联网，不读第一实例 DB，重新执行摘要、签名、证明和任务条件检查。测试会复制导出文件、删除原目录后用新 Node 进程重验。
 
-退出码：0 为一致且 PASS；2 为一致且 FAIL；3 为未知或上下文不同；4 为完整性／报告不符；1 为用法、文件或格式错误。详见 [A 包说明](../../docs/11-A包实现与复验.md)。
+退出码：0 为一致且 PASS；2 为一致且 FAIL；3 为未知或上下文不同；4 为完整性／报告不符；1 为用法、文件或格式错误。详见 [A 包说明](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/11-A%E5%8C%85%E5%AE%9E%E7%8E%B0%E4%B8%8E%E5%A4%8D%E9%AA%8C.md)。

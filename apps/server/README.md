@@ -13,4 +13,4 @@ npm run server -- --config .local/b-demo/local-two.json
 
 `publishForTest(evidenceId, retryOf?)` 是受信代码调用的队列故障测试边界：原子登记 attemptId、pending、failed；显式 retryOf 必须匹配上一失败尝试，重复重试不重复消费。无适配器时保持 not_requested。未接 C adapter、没有链上确认。
 
-测试：`npm run test:b`；全流程与 API 见 [B 实现与复验](../../docs/13-B包实现与复验.md)。当前面向本地联调，未实现公众多租户认证、分页归档或跨机器分布式队列。
+测试：`npm run test:b`；全流程与 API 见 [B 实现与复验](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/13-B%E5%8C%85%E5%AE%9E%E7%8E%B0%E4%B8%8E%E5%A4%8D%E9%AA%8C.md)。当前面向本地联调，未实现公众多租户认证、分页归档或跨机器分布式队列。

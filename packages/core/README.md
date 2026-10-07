@@ -8,4 +8,4 @@ A 包确定性核验内核已实现，首个规则 `eth-account-v1` 支持以太
 
 真实样本为 [mainnet 26134149](../../fixtures/core/ethereum-mainnet-26134149/README.md)。不存在账户使用零哈希占位，存在空账户按实际 RLP 解码值比较，不互相混淆。未验证共识最终性或任意存储槽。
 
-在根目录运行 `npm run typecheck` 和 `npm test`。政策、历史/live 语义与调用示例见 [A 包说明](../../docs/11-A包实现与复验.md)。
+在根目录运行 `npm run typecheck` 和 `npm test`。政策、历史/live 语义与调用示例见 [A 包说明](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/11-A%E5%8C%85%E5%AE%9E%E7%8E%B0%E4%B8%8E%E5%A4%8D%E9%AA%8C.md)。

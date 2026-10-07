@@ -18,4 +18,4 @@
 
 本地提交／事件对应、不同发布者隔离、重复策略、失败分支；公开网络确认单独记录。
 
-实际代码、依赖和命令落地后更新本文件，注明已运行的检查与限制。协作依据：[根规则](../../AGENTS.md)、[工程结构](../../docs/09-工程结构.md)、[接口约定](../../docs/08-接口约定.md)。
+实际代码、依赖和命令落地后更新本文件，注明已运行的检查与限制。协作依据：[根规则](../../AGENTS.md)、[工程结构](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/09-%E5%B7%A5%E7%A8%8B%E7%BB%93%E6%9E%84.md)、[接口约定](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/08-%E6%8E%A5%E5%8F%A3%E7%BA%A6%E5%AE%9A.md)。

@@ -10,4 +10,4 @@ npm run observe:b  # 需已启动后端；输出与 SQLite 记录均来自实际
 
 指标按 LIVE/FROZEN/FAULT_INJECTION、方法及区块分组，窗口为最近 24 小时。超时无响应延迟，不计零延迟。验收计数来自本机实际任务尝试，导入记录不增加调用成功数。原始响应不全部入库，仅留安全摘要；不把单方超时观察当作可归属反证。并非穷举服务历史范围，少量样本不能外推 SLA。
 
-测试通过受控 HTTP 端点验证分类（不写公共观测索引）；真实网络结果独立保存在 `.local/b-demo/live-observations.json`，见 [本轮记录](../../docs/13-B包实现与复验.md)。
+测试通过受控 HTTP 端点验证分类（不写公共观测索引）；真实网络结果独立保存在 `.local/b-demo/live-observations.json`，见 [本轮记录](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/13-B%E5%8C%85%E5%AE%9E%E7%8E%B0%E4%B8%8E%E5%A4%8D%E9%AA%8C.md)。

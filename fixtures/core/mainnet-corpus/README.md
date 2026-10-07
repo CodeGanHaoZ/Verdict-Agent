@@ -46,4 +46,4 @@ npm run capture:proof -- --block 0xd59f80 --baseline-source https://1rpc.io/eth 
 
 `--account` 可重复，最多 16 个去重地址；不给参数时保留原来的 WETH＋不存在地址默认值。采集脚本只把原始材料放到 `.local/capture/`，不会自动推广成可信基准或提交到仓库。历史窗口和限流可能变化，重新采集失败不表示现有离线证明失效。
 
-其他公开测试资源和待补覆盖见 [测试数据来源与覆盖](../../../docs/12-测试数据来源与覆盖.md)。
+其他公开测试资源和待补覆盖见 [测试数据来源与覆盖](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/12-%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE%E6%9D%A5%E6%BA%90%E4%B8%8E%E8%A6%86%E7%9B%96.md)。

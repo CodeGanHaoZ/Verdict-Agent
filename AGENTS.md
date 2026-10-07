@@ -1,19 +1,23 @@
-# Verdict Agent：开发协作约定
+# Verdict Agent：代码分支开发协作约定
+
+## 分支边界
+
+`code` 维护代码、测试、配置和模块运行说明；`docs/` 中设计、接口说明及历史决策统一维护在 [materials 分支](https://github.com/hankesong/Verdict-Agent/tree/materials)。不将资料分支整支合并到代码分支。跨分支需求分别提交并关联。
 
 ## 当前目标与授权
 
 项目是 **Agent 服务验收与证据审计**：核对任务承诺和实际交付，给出证据、未知项与处理动作，让其他实例复验并改善服务选择。首个强验收场景为以太坊指定区块的账户状态。
 
-用户已于 2026-10-06 明确要求开始正式开发，见 [003 开发启动决定](docs/decisions/003-development-kickoff.md)。可以推进本项目 P0 的实现、依赖验证、负例测试和本地联调，不再以早期“仅发布设计／暂停扩展”的记录阻塞这些工作。DAO、反事实调查、电池资料审查等是候选，不能替换当前任务或混入 P0。创建目录、声明接口与图示都不代表功能完成。
+用户已于 2026-10-06 明确要求开始正式开发，见 [003 开发启动决定](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/decisions/003-development-kickoff.md)。可以推进本项目 P0 的实现、依赖验证、负例测试和本地联调，不再以早期“仅发布设计／暂停扩展”的记录阻塞这些工作。DAO、反事实调查、电池资料审查等是候选，不能替换当前任务或混入 P0。创建目录、声明接口与图示都不代表功能完成。
 
 当前仓库为 `hankesong/Verdict-Agent`。其他仓库中的实验、PI 子模块与运行结果不自动属于本项目；确需复用时记录来源、版本与许可证。公开网络交易、主网部署、付费服务和对外联络仍按用户的具体授权执行。
 
 ## 每次开始工作
 
 1. 检查当前目录、Git remote、分支和工作区改动；保留其他人未提交的工作，勿默认重置或清理。
-2. 阅读本文件、目标目录下的 `AGENTS.md`、对应工作包和 [开发启动清单](docs/10-开发启动清单.md)。从根目录工作时也主动读取将要修改的子目录规则。
-3. 涉及产品范围看 [PRD](docs/02-PRD.md)，涉及共享字段看 [接口约定](docs/08-接口约定.md)，涉及依赖或放置位置看 [工程结构](docs/09-工程结构.md)。新决定记录在 `docs/decisions/`，历史决定保留并标明替代关系。
-4. 先落实用户指定的工作包；没有指定时先读 README 的接力与未完成清单。A 包与 B 后端闭环已经完成本地验证，不重复初始化或改写内核；C 的简易网页也已接入真实 API，见 docs/14-简易前端.md。当前剩余为真实存证适配、合约和完整演示，A/B 支持接线和补测。
+2. 阅读本文件、目标目录下的 `AGENTS.md`、对应工作包和 [开发启动清单](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/10-%E5%BC%80%E5%8F%91%E5%90%AF%E5%8A%A8%E6%B8%85%E5%8D%95.md)。从根目录工作时也主动读取将要修改的子目录规则。
+3. 涉及产品范围看 [PRD](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/02-PRD.md)，涉及共享字段看 [接口约定](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/08-%E6%8E%A5%E5%8F%A3%E7%BA%A6%E5%AE%9A.md)，涉及依赖或放置位置看 [工程结构](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/09-%E5%B7%A5%E7%A8%8B%E7%BB%93%E6%9E%84.md)。新决定记录在 materials 分支的 `docs/decisions/`，历史决定保留并标明替代关系。
+4. 先落实用户指定的工作包；没有指定时先读 README 的接力与未完成清单。A 包与 B 后端闭环已经完成本地验证，不重复初始化或改写内核；C 的简易网页也已接入真实 API，见 [docs/14-简易前端.md](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/14-%E7%AE%80%E6%98%93%E5%89%8D%E7%AB%AF.md)。当前剩余为真实存证适配、合约和完整演示，A/B 支持接线和补测。
 
 ## 三人职责与文件所有权
 
@@ -21,7 +25,7 @@
 | --- | --- | --- |
 | A | `packages/protocol`、`packages/core`、`packages/evidence`、`apps/verifier-cli`、`fixtures/core` | 共享协议、确定性核验、证据和独立复验 |
 | B | `apps/server`、`packages/observations`、`services/demo`、`examples/consumer`、`config`、`scripts/dev`、`tests/integration` | 服务接入、排序与调用流程、存储/API、整体联调 |
-| C | `apps/web`、`packages/anchor-client`、`contracts/evidence-anchor`、`fixtures/ui`、`tests/e2e`、`docs/demo` | 审计页面、存证适配、用户路径与演示 |
+| C | `apps/web`、`packages/anchor-client`、`contracts/evidence-anchor`、`fixtures/ui`、`tests/e2e`、`materials:docs/demo` | 审计页面、存证适配、用户路径与演示 |
 
 根运行工程、依赖与锁文件由 B 维护；共享类型由 A 维护。跨目录改动需要在提交说明写明关联接口和影响，不设置逐文件审批。三人分工是协作岗位，不能据此擅自启动子代理、创建聊天或通知成员；除非用户明确要求，不主动委派子代理。
 
@@ -34,7 +38,7 @@
 - `server` 组合上述包；`verifier-cli` 独立调用证据／核验包；`web` 通过 API 和共享协议消费数据，不导入后端内部代码、密钥、数据库或 Node 专用核验实现。
 - 包通过公开入口引用，不跨包直接导入内部源码。共享格式的破坏性变化更新版本、样本和文档，不偷偷改变同名字段含义。
 
-完整依赖表见 [工程结构](docs/09-工程结构.md)。A 包的 `src`、manifest 与命令已经落地；C 的存证等尚未实现部分按其实际提交建立，不用空函数、固定 PASS 或虚假成功脚本占位。
+完整依赖表见 [工程结构](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/09-%E5%B7%A5%E7%A8%8B%E7%BB%93%E6%9E%84.md)。A 包的 `src`、manifest 与命令已经落地；C 的存证等尚未实现部分按其实际提交建立，不用空函数、固定 PASS 或虚假成功脚本占位。
 
 ## 产品与证据底线
 
@@ -52,7 +56,7 @@
 - 沿用 TypeScript 分层方向。本次 A 包按用户“必要基础配置”授权已固定运行时、npm workspace 和锁文件；后续由 B 统一协调根工程。A 使用已验证的证明、签名与规范化库，不自行发明密码学算法。
 - 修改行为时运行对应模块的真实检查。核验逻辑必须有正常、错块、错值、错误签名、缺材料等有意义的用例；跨模块变动运行有关集成路径。
 - 单元测试就近放置；跨模块用 `tests/integration/`，用户路径用 `tests/e2e/`。不为纯文档或可逆小改动建立额外测试工程，不用只复述实现的断言冒充验证。
-- 只运行实际存在的脚本。A 包已具备 Node 22.23.3 / npm 10.9.9 工程，根目录可执行 `npm ci --ignore-scripts`、`npm run typecheck`、`npm test`、`npm run demo:a` 和 `npm run verify`，见 docs/11-A包实现与复验.md；B 已有 `dev:init`、`dev:start`、`dev:stop`、`test:b`、`test:all`、`verify:b`、`observe:b` 和 `example:b`，见 docs/13-B包实现与复验.md；简易网页可用 `npm run web` 启动，`npm run test:e2e` 验证；不能冒称真实存证或模型已接入。新增命令时同步模块 README 和根 README，写明需要哪些依赖及已验证的结果。
+- 只运行实际存在的脚本。A 包已具备 Node 22.23.3 / npm 10.9.9 工程，根目录可执行 `npm ci --ignore-scripts`、`npm run typecheck`、`npm test`、`npm run demo:a` 和 `npm run verify`，见 [docs/11-A包实现与复验.md](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/11-A%E5%8C%85%E5%AE%9E%E7%8E%B0%E4%B8%8E%E5%A4%8D%E9%AA%8C.md)；B 已有 `dev:init`、`dev:start`、`dev:stop`、`test:b`、`test:all`、`verify:b`、`observe:b` 和 `example:b`，见 [docs/13-B包实现与复验.md](https://github.com/hankesong/Verdict-Agent/blob/materials/docs/13-B%E5%8C%85%E5%AE%9E%E7%8E%B0%E4%B8%8E%E5%A4%8D%E9%AA%8C.md)；简易网页可用 `npm run web` 启动，`npm run test:e2e` 验证；不能冒称真实存证或模型已接入。新增命令时同步模块 README 和根 README，写明需要哪些依赖及已验证的结果。
 - 首次真链路尽早接通：真实样本 → 签名交付 → 确定性验收 → 错误拒收 → 替换成功。之后导出、第二实例复验、页面和本地存证。至少预留最后 6 小时联调与交付，实际时间由当前计划记录，不沿用旧的“剩余 38 小时”。
 
 ## 数据、提交与完成说明
