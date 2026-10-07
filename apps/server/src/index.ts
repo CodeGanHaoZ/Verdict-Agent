@@ -74,6 +74,8 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
       }
       const path = new URL(req.url ?? "/", "http://localhost").pathname;
       if(req.method==='POST' && path==='/api/guard/reports/import'){send(res,200,agents.reports.import(await body(req)));return;}
+      if(req.method==='GET' && path==='/api/guard/reports'){send(res,200,agents.reports.list());return;}
+      if(req.method==='GET' && path==='/api/guard/tasks'){send(res,200,agents.guardTasks());return;}
       if(req.method==='GET' && path==='/api/guard/rules'){send(res,200,agents.reports.rules());return;}
       const reportRoute=path.match(/^\/api\/guard\/reports\/(0x[0-9a-f]{64})(?:\/(candidate|replay))?$/);
       if(reportRoute && req.method==='GET' && !reportRoute[2]){send(res,200,agents.reports.get(reportRoute[1]));return;}
@@ -84,6 +86,9 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
       if(req.method==='GET' && exportRoute){send(res,200,agents.exportIncident(exportRoute[1],Number(exportRoute[2])));return;}
       const guardRoute=path.match(/^\/api\/guard\/tasks\/([\w-]+)$/);
       if(req.method==='GET' && guardRoute){send(res,200,agents.guard.state(guardRoute[1]));return;}
+      const telemetryRoute=path.match(/^\/api\/guard\/tasks\/([\w-]+)\/telemetry(?:\/(import))?$/);
+      if(req.method==='GET' && telemetryRoute && !telemetryRoute[2]){send(res,200,await agents.guardTelemetry(telemetryRoute[1]));return;}
+      if(req.method==='POST' && telemetryRoute && telemetryRoute[2]==='import'){send(res,200,agents.guardTelemetryImport(telemetryRoute[1],await body(req)));return;}
       if (req.method === "GET" && path === "/api/agent/meta") {
         send(res, 200, agents.info());
         return;

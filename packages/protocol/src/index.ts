@@ -311,5 +311,5 @@ export const SecurityIncidentSchema=z.strictObject({
 });
 export type SecurityIncident=z.infer<typeof SecurityIncidentSchema>;
 export const SignedSecurityIncidentSchema=z.strictObject({incident:SecurityIncidentSchema,digest:HashSchema,signature:z.string().max(300)});
-export const RuleCandidateSchema=z.strictObject({id:HashSchema,version:z.number().int().positive(),sourceIncident:HashSchema,kind:z.enum(['SCOPE_ACCOUNT','SCOPE_BLOCK','SCOPE_CANDIDATES','SCOPE_BUDGET']),status:z.enum(['CANDIDATE','TESTED','ENABLED','REVOKED']),regression:z.strictObject({attacks:z.number().int().nonnegative(),blocked:z.number().int().nonnegative(),controls:z.number().int().nonnegative(),falseBlocks:z.number().int().nonnegative()}).nullable()});
+export const RuleCandidateSchema=z.strictObject({id:HashSchema,version:z.number().int().positive(),sourceIncident:HashSchema,kind:z.enum(['SCOPE_ACCOUNT','SCOPE_BLOCK','SCOPE_CANDIDATES','SCOPE_BUDGET']),value:z.string().max(120).nullable().default(null),status:z.enum(['CANDIDATE','TESTED','ENABLED','REVOKED']),regression:z.strictObject({attacks:z.number().int().nonnegative(),blocked:z.number().int().nonnegative(),controls:z.number().int().nonnegative(),falseBlocks:z.number().int().nonnegative()}).nullable()});
 export type RuleCandidate=z.infer<typeof RuleCandidateSchema>;

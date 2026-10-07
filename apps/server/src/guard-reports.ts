@@ -3,7 +3,7 @@ import { digest } from '@verdict/core';
 import { RuleCandidateSchema, canonical_json, SignedSecurityIncidentSchema, SecurityIncidentSchema, type SecurityIncident, type RuleCandidate } from '@verdict/protocol';
 import { Store, ApiError } from './store.js';
 import { randomUUID } from 'node:crypto';
-import { Guard, boundaryViolation } from './guard.js';
+import { Guard, boundaryViolation, ruleMatches } from './guard.js';
 import type { ServerConfig } from './config.js';
 
 export class GuardReports {
@@ -81,7 +81,14 @@ export class GuardReports {
   if(report.replay.status!=='REPRODUCED')throw new ApiError(409,'REPORT_NOT_REPRODUCED');
   const kinds:Record<string,RuleCandidate['kind']>={SCOPE_account:'SCOPE_ACCOUNT',SCOPE_blockHash:'SCOPE_BLOCK',SCOPE_candidates:'SCOPE_CANDIDATES',SCOPE_budget:'SCOPE_BUDGET'};
   const kind=kinds[report.replay.reason];if(!kind)throw new ApiError(400,'RULE_KIND_UNSUPPORTED');
-  const rule:RuleCandidate={id:digest({source:id,kind,version:1}),version:1,sourceIncident:id,kind,status:'CANDIDATE',regression:null};
+  // The attack signature: the concrete value the reproduced incident tried to inject.
+  const proposed=report.packet.incident.proposed,boundary=report.packet.incident.boundary;
+  let value:string|null=null;
+  if(kind==='SCOPE_ACCOUNT')value=proposed?.account??null;
+  else if(kind==='SCOPE_BLOCK')value=proposed?.blockHash??null;
+  else if(kind==='SCOPE_CANDIDATES')value=proposed?.candidateIds.find(x=>!boundary.candidateIds.includes(x))??null;
+  // SCOPE_BUDGET stays signature-free: budget abuse is boundary-relative and already blocked by hard rules.
+  const rule:RuleCandidate={id:digest({source:id,kind,version:1}),version:1,sourceIncident:id,kind,value,status:'CANDIDATE',regression:null};
   this.store.db.prepare('INSERT OR IGNORE INTO guard_rules VALUES(?,?)').run(rule.id,JSON.stringify(rule));return rule;
  }
  // Maintainer-only local operation. Intentionally not reachable from model tools or HTTP.
@@ -94,6 +101,10 @@ export class GuardReports {
   }else{
    if(rule.status==='REVOKED')throw new ApiError(409,'RULE_REVOKED');
    const original=this.get(rule.sourceIncident).packet.incident;
+   // The signature must reproduce: an enabled value rule has to match the incident's own
+   // proposed arguments, otherwise the rule cannot be tested against its reported attack.
+   if(rule.value){const signature=original.proposed?ruleMatches(rule,original.action,original.proposed):false;
+    if(!signature)throw new ApiError(409,'RULE_SIGNATURE_MISMATCH');}
    const b=original.boundary;
    const attacks=[{...b,account:'0x'+'f'.repeat(40)},{...b,blockHash:'0x'+'f'.repeat(64)},{...b,candidateIds:[...b.candidateIds,'outside']},{...b,budget:{...b.budget,maxAttempts:b.budget.maxAttempts+1}}];
    const controls=[b,{...b,candidateIds:b.candidateIds.slice(0,1)},{...b,budget:{...b.budget,maxAttempts:1}}];
@@ -102,4 +113,17 @@ export class GuardReports {
   this.store.db.prepare('UPDATE guard_rules SET body=? WHERE id=?').run(JSON.stringify(rule),id);return rule;
  }
  rules(){return (this.store.db.prepare('SELECT body FROM guard_rules').all() as {body:string}[]).map(r=>JSON.parse(r.body));}
+ // Public index (FR-G04): discovery metadata for known and exported reports. Only
+ // redacted incident metadata and replay results leave the instance; materials never do.
+ list(){
+  const reports=(this.store.db.prepare('SELECT id,incident_key,body,result FROM guard_reports').all() as {id:string;incident_key:string;body:string;result:string}[]).map(r=>{
+   const p=SignedSecurityIncidentSchema.parse(JSON.parse(r.body)),replay=JSON.parse(r.result);
+   return {digest:r.id,incidentKey:r.incident_key,revision:p.incident.revision,reporterId:p.incident.reporterId,action:p.incident.action,status:p.incident.status,replayStatus:replay.status,reason:replay.reason,attribution:replay.attribution,weight:replay.weight,redaction:p.incident.redaction??null,modelId:p.incident.modelId,modelSource:p.incident.modelSource,at:p.incident.at,origin:p.incident.reporterId===this.config.guardReports?.reporterId?'LOCAL':'IMPORTED'};
+  }).sort((a,b)=>b.at.localeCompare(a.at));
+  const exported=(this.store.db.prepare('SELECT id,body FROM guard_exports').all() as {id:string;body:string}[]).map(r=>{
+   const p=SignedSecurityIncidentSchema.parse(JSON.parse(r.body));
+   return {digest:r.id,incidentKey:p.incident.incidentKey,revision:p.incident.revision,reporterId:p.incident.reporterId,action:p.incident.action,status:p.incident.status,at:p.incident.at,modelSource:p.incident.modelSource,redaction:p.incident.redaction??null};
+  }).sort((a,b)=>b.at.localeCompare(a.at));
+  return {reports,exported,erc8004:{status:'NOT_CONNECTED',note:'ERC-8004 feedback 广播未接入；跨实例交换仅限已配置可信报告者的手动导入。'}};
+ }
 }

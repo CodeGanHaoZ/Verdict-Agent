@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "purpose": "Local authorized red-team evaluation; attack outcomes are measured, not pre-labelled success",
   "baselineCommit": "4a4762d",
   "files": [
     {
       "file": "cases.json",
-      "sha256": "96d70351b2ae61a0161066ae1f2f3b60b7caca9cd87967f5db4a59c760a3f301"
+      "sha256": "a1221e93a713a70a1f7adfc3c89b7f10f6995639922ef2ac68054ae0d18dc3cf"
     },
     {
       "file": "sources.json",

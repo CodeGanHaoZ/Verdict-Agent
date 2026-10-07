@@ -97,6 +97,17 @@ export class AgentStore {
     if (!r) throw new ApiError(404, "AGENT_NOT_FOUND");
     return JSON.parse(r.body);
   }
+  /** Most recent agents first; bounded for the monitor view. */
+  agents(limit = 50): AgentSnapshot[] {
+    return (
+      this.store.db
+        .prepare("SELECT body FROM agents")
+        .all() as { body: string }[]
+    )
+      .map((r) => JSON.parse(r.body) as AgentSnapshot)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
+  }
   saveAgent(a: AgentSnapshot) {
     this.store.db
       .prepare(

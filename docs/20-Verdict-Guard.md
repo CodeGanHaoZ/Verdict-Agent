@@ -20,7 +20,11 @@
 - `POST /api/guard/reports/:digest/replay`：有显式共享材料时调用本实例独立审查器，结果标为 MODEL_SUSPECTED／MODEL_NOT_REPRODUCED，不能生成确定性范围规则。
 - 原导出路径也支持 POST `{ publicMaterials: [...], acknowledgePublic: true }`，只能分享本任务已审查、摘要一致且不含已知凭据的材料。默认不共享原文；操作者负责先审阅其公开性。
 - `POST /api/guard/reports/:digest/candidate`
+- `GET /api/guard/reports`：公共索引（已导入报告＋本机导出发件箱＋ERC-8004 未接入标注；仅元数据出境），见 [015 决定](decisions/015-guard-report-public-index.md)。
+- `GET /api/guard/tasks`：外审监控台数据源（最近受监 agent 的决定计数、拦截、平均审查等待、用量），见 [017 决定](decisions/017-monitor-and-timeline.md)。
 - `GET /api/guard/rules`
+- `GET /api/guard/tasks/:agentId/telemetry`：活动/决定账本渲染为 pi-telemetry spans（`verdict.guard.review@1`，仅摘要与决定元数据出境）。
+- `POST /api/guard/tasks/:agentId/telemetry/import`：第三方 span 以 EXTERNAL 活动入账本（≤200 条/次，不授权任何动作，外审只见动作名与摘要）。
 
 第二数据库独立验签、重算，不采用报告自报结论。重复摘要幂等；同一报告 revision 单调；撤销记录令相关规则失效。无相关原始材料的语义型事件返回 UNREPLAYABLE，不能声称复现。
 
@@ -33,7 +37,7 @@ npm run guard:rules -- CONFIG.json enable RULE_ID
 npm run guard:rules -- CONFIG.json revoke RULE_ID
 ```
 
-当前启用规则只增加命中诊断，不改变核心禁止条件。内置回归覆盖四种范围扩张及三个正常对照；尚不能替代完整历史语义攻击回归。
+启用规则自 [016 决定](decisions/016-rule-enforcement.md) 起携带攻击签名 `value` 进入硬规则阻断路径：对 `start_task`/`request_verified_state`，命中签名的动作在调模型前即被 `ENABLED_RULE_<KIND>` 拦截；SCOPE_BUDGET 规则保持无签名（边界相对）。维护者的 test 阶段额外校验签名与源 incident 的 proposed 一致（RULE_SIGNATURE_MISMATCH）。核心禁止条件与撤销语义不变。内置回归覆盖四种范围扩张及三个正常对照；尚不能替代完整历史语义攻击回归。
 
 ## 复跑
 
@@ -55,7 +59,8 @@ npm run verify:guard
 - 真实联调已完成 GLM 5.3＋DeepSeek 的替换成功路径；最新 GLM 5.3 同模型行为监督在第三次审查时耗尽总预算，尚未跑完成功替换。见下文分开的真实运行记录。
 - 默认范围报告已化名化；显式公开材料可以独立语义复验。`relatedEvidenceIds` 可显式附加本任务最多两份 A 证据，必须 `acknowledgePublic: true`；这会包含真实账户材料。复验请求必须由调用者提供目标实例的 `contextId`，否则不可复验。自动秘密检测不能保证任意文本无隐私泄露。
 - 页面有导出、导入、复验和候选生成；维护者启用／撤销仅提供本地命令，未提供网页管理员登录。
-- 原子允许记录已在业务执行器消费；尚未适配任何第三方活动插件。
+- 原子允许记录已在业务执行器消费；第三方活动插件适配已按 [014 决定](decisions/014-guard-telemetry-adapter.md) 完成（pi-telemetry 导出/导入），任意暴露 telemetry 的执行 Agent 可接入账本与外审上下文。
+
 - `verify:guard` 覆盖四种首次范围攻击与一个正常替换对照，尚不是大规模通用提示注入评测。报告单独列出审查等待耗时；未测配对基线的因果额外延迟。
 - 历史草案接口保留兼容，不受新 Guard 保护；固定 B 流程也不受模型外审保护。
 

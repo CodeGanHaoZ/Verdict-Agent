@@ -1,5 +1,6 @@
 import { GuardReports } from "./guard-reports.js";
 import { Guard, boundaryViolation } from "./guard.js";
+import { parseTelemetryImport, telemetryFromTask } from "./guard-telemetry.js";
 import { z } from "zod";
 import { digest } from "@verdict/core";
 import { fetch_json } from "@verdict/observations";
@@ -222,6 +223,9 @@ export class AgentService {
     const c = this.config();
     const request = CreateAgentRunSchema.parse(raw);
     if (!this.engine.config.guard || !process.env[this.engine.config.guard.apiKeyEnv]) throw new ApiError(503,"GUARD_NOT_CONFIGURED");
+    // Structured caller constraints are the trusted this-run scope; reject unsupported or over-budget
+    // scopes at submission instead of letting the executor bind a substituted task (red-team FR-G01).
+    if (request.constraints) this.validateConditions(request.constraints);
     const a: AgentSnapshot = {
       apiVersion: AGENT_API_VERSION,
       agentId: newId(),
@@ -620,6 +624,13 @@ export class AgentService {
                       ],
                     };
                   const conditions = this.validateConditions(raw);
+                  // Invariant independent of the review hook: a locked boundary can never be expanded
+                  // at binding time, even if authorization ordering changes in future refactors.
+                  if (
+                    boundary &&
+                    boundaryViolation(boundary.conditions, conditions)
+                  )
+                    throw new AgentFailure("GUARD_STOPPED");
                   if (a.runId) {
                     if (
                       !boundConditions ||
@@ -906,6 +917,51 @@ export class AgentService {
       this.store.event(id, "STATUS", { status: this.store.agent(id).status });
     }
   }
+  // FR-G07: 外审监控台数据源。聚合最近受 Guard 保护的 agent 与其外审状态；旧路径（无
+  // Guard 记录的草案流程）如实显示为未受审，不伪造结论。
+  guardTasks() {
+    return {
+      tasks: this.store.agents().map((a) => {
+        let g: ReturnType<Guard["state"]> | null = null;
+        try {
+          g = this.guard.state(a.agentId);
+        } catch {
+          g = null;
+        }
+        const decisions = g?.decisions ?? [];
+        const reviewWaitMs = decisions.length
+          ? Math.round(
+              decisions.reduce((sum, d) => sum + d.latencyMs, 0) /
+                decisions.length,
+            )
+          : null;
+        return {
+          agentId: a.agentId,
+          runId: a.runId,
+          status: a.status,
+          modelStatus: a.modelStatus,
+          modelId: a.modelId,
+          modelSource: a.modelSource,
+          error: a.error,
+          createdAt: a.createdAt,
+          finishedAt: a.finishedAt,
+          usage: a.usage,
+          guard: g
+            ? {
+                status: g.status,
+                boundarySource: g.boundary?.source ?? null,
+                activities: g.activities.length,
+                decisions: decisions.length,
+                blocked: decisions.filter((d) => d.verdict === "BLOCK").length,
+                lastReasonCode: decisions.at(-1)?.reasonCode ?? null,
+                reviewWaitMs,
+                reviewerUsage: g.usage,
+              }
+            : null,
+        };
+      }),
+    };
+  }
   stop(id: string) {
     const a = this.store.agent(id);
     if (a.status === "RUNNING" || a.status === "QUEUED") {
@@ -914,6 +970,19 @@ export class AgentService {
       this.jobs.get(id)?.controller.abort();
     }
     return this.store.agent(id);
+  }
+  // FR-G02: pi-telemetry adapter. Export renders the activity/decision ledger as
+  // vendor-neutral spans; import accepts third-party spans as EXTERNAL ledger entries.
+  guardTelemetry(id: string) {
+    return telemetryFromTask(id, this.guard.state(id));
+  }
+  guardTelemetryImport(id: string, raw: unknown) {
+    const spans = parseTelemetryImport(raw);
+    const sequences = this.guard.ingest(
+      id,
+      spans.map((s) => ({ action: "telemetry." + s.name, args: s })),
+    );
+    return { ingested: sequences.length, sequences };
   }
   async close() {
     this.closing = true;

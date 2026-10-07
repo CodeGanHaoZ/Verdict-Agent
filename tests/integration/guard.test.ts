@@ -115,6 +115,18 @@ for(const dimension of ['account','block','candidates','budget'] as const){
   }finally{await h.close();}
  });
 }
+test('Structured constraints outside supported context or operator budget are rejected at submission',async()=>{
+ const h=await harness();
+ try{
+  const {missing,explanation,...scope}=structuredClone(h.proposal);
+  assert.throws(
+   ()=>h.app.agents.createAgent({clientRequestId:'submission-bad-block',prompt:'x',constraints:{...scope,blockHash:`0x${'1'.repeat(64)}`}}),
+   /DRAFT_CONTEXT_UNSUPPORTED/);
+  assert.throws(
+   ()=>h.app.agents.createAgent({clientRequestId:'submission-bad-budget',prompt:'x',constraints:{...scope,budget:{...scope.budget,maxAttempts:99}}}),
+   /DRAFT_BUDGET_EXCEEDED/);
+ }finally{await h.close();}
+});
 test('One-use permit binds exact arguments and cannot be replayed',async()=>{
  const store=new Store(mkdtempSync(join(tmpdir(),'guard-permit-'))),guard=new Guard(store),signal=new AbortController().signal;
  try{
@@ -150,7 +162,7 @@ test('Simultaneous authorization cannot consume another action and stopped tasks
  }finally{store.close();}
 });
 import { sign } from 'node:crypto';
-import { canonical_json } from '@verdict/protocol';
+import { canonical_json, type SecurityIncident } from '@verdict/protocol';
 test('Second reviewer independently judges shared material without accepting the source verdict',async()=>{
  const store=new Store(mkdtempSync(join(tmpdir(),'guard-semantic-'))),reviewer=await reviewerFixture(conditions);
  const pair=generateKeyPairSync('ed25519');
@@ -220,4 +232,110 @@ test('Reviewer request cap and timeout stop without producing executable permits
  await guard.lock('slow',c,'task',conditions,{},x=>x as AgentConditions,signal);
  await assert.rejects(guard.authorize('slow',c,'start_task',conditions,()=>null,signal));assert.equal(guard.state('slow').decisions[0].verdict,'UNCERTAIN');assert.equal(guard.state('slow').decisions[0].consumed,false);
  }finally{store.close();await reviewer.close();}
+});
+
+test('Public report index lists imported and exported packets without raw material',async()=>{
+ const store=new Store(mkdtempSync(join(tmpdir(),'guard-index-')));
+ const selfKey=generateKeyPairSync('ed25519'),remoteKey=generateKeyPairSync('ed25519');
+ const cfg={guardReports:{reporterId:'self',signingKeyEnv:'INDEX_SIGNER',trustedReporters:{remote:remoteKey.publicKey.export({type:'spki',format:'pem'}).toString()}}} as unknown as ServerConfig;
+ const SECRET_MATERIAL='INDEX_TEST_SECRET_MATERIAL_TEXT';
+ process.env.INDEX_SIGNER=selfKey.privateKey.export({type:'pkcs8',format:'pem'}).toString();
+ try{
+  const reports=new GuardReports(store,cfg);
+  const base={version:'guard-incident-v1' as const,incidentKey:digest('idx-a'),revision:1,action:'replay_evidence' as const,boundary:conditions,proposed:null,decision:{sequence:1,action:'replay_evidence' as const,argumentsDigest:digest('args'),boundaryDigest:digest(conditions),ruleVersion:'guard-v1' as const,verdict:'BLOCK' as const,reasonCode:'TEST',consumed:false,latencyMs:1},executed:false,materialDigests:[] as string[],modelId:'m',modelSource:'TEST_TRANSPORT' as const,at:new Date().toISOString()};
+  reports.export({...base,reporterId:'self',status:'SUSPECTED'});
+  const remoteIncident={...base,reporterId:'remote',incidentKey:digest('idx-b'),status:'SUSPECTED' as const,sharedMaterials:[SECRET_MATERIAL]};
+  const packet={incident:remoteIncident,digest:digest(remoteIncident),signature:sign(null,Buffer.from(canonical_json(remoteIncident)),remoteKey.privateKey).toString('base64')};
+  const imported=reports.import(packet);
+  assert.equal(imported.duplicate,false);
+  const index=reports.list();
+  assert.equal(index.reports.length,1);
+  const row=index.reports[0]!;
+  assert.equal(row.origin,'IMPORTED');assert.equal(row.reporterId,'remote');assert.equal(row.replayStatus,'UNREPLAYABLE');assert.equal(row.weight,1);
+  assert.equal(index.exported.length,1);assert.equal(index.exported[0]!.reporterId,'self');
+  assert.equal(index.erc8004.status,'NOT_CONNECTED');
+  const serialized=JSON.stringify(index);
+  assert.ok(!serialized.includes(SECRET_MATERIAL),'index metadata must not include shared material text');
+  assert.ok(!serialized.includes('sharedMaterials'),'index rows carry metadata only');
+ }finally{delete process.env.INDEX_SIGNER;store.close();}
+});
+
+test('Enabled rule hard-blocks a boundary-clean reported service without model review; revoke restores',async()=>{
+ const h=await harness();
+ const selfKey=generateKeyPairSync('ed25519');
+ const clone=structuredClone(h.proposal) as {missing:unknown;explanation:unknown};
+ const {missing,explanation,...rest}=clone;
+ const full=rest as unknown as AgentConditions;
+ const boundaryScope:AgentConditions={...full,candidateIds:['demo-wrong-block','demo-wrong-value']};
+ try{
+  process.env.GUARD_SELF_KEY=selfKey.privateKey.export({type:'pkcs8',format:'pem'}).toString();
+  h.config.guardReports={reporterId:'self',signingKeyEnv:'GUARD_SELF_KEY',trustedReporters:{self:selfKey.publicKey.export({type:'spki',format:'pem'}).toString()}} as never;
+  await h.restart();
+  // Imported incident from another instance: attacker injected demo-valid beyond its own boundary.
+  const incident:SecurityIncident={version:'guard-incident-v1',reporterId:'self',incidentKey:digest('candidate-attack'),revision:1,status:'SUSPECTED',action:'start_task',boundary:boundaryScope,proposed:full,decision:{sequence:1,action:'start_task',argumentsDigest:digest(full),boundaryDigest:digest(boundaryScope),ruleVersion:'guard-v1',verdict:'BLOCK',reasonCode:'SCOPE_candidates',consumed:false,latencyMs:1},executed:false,materialDigests:[],sharedMaterials:[],modelId:'m',modelSource:'TEST_TRANSPORT',at:new Date().toISOString()};
+  const packet={incident,digest:digest(incident),signature:sign(null,Buffer.from(canonical_json(incident)),selfKey.privateKey).toString('base64')};
+  assert.equal(h.app.agents.reports.import(packet).status,'REPRODUCED');
+  const rule=h.app.agents.reports.candidate(packet.digest);
+  assert.equal(rule.kind,'SCOPE_CANDIDATES');assert.equal(rule.value,'demo-valid');
+  assert.equal(h.app.agents.reports.maintain(rule.id,'test').status,'TESTED');
+  assert.equal(h.app.agents.reports.maintain(rule.id,'enable').status,'ENABLED');
+  // Run 1: the user's own boundary ALLOWS demo-valid, but the enabled rule hard-blocks it
+  // before any model review of that call; no data is adopted.
+  h.scripted.mode='normal';
+  const run1=h.app.agents.createAgent({clientRequestId:'rule-blocked',prompt:'按结构化约束执行',constraints:full});
+  for(let n=0;n<800;n++){
+   const a=h.app.agents.store.agent(run1.agentId);
+   if(a.finishedAt)break;
+   await new Promise(r=>setTimeout(r,25));
+  }
+  const a1=h.app.agents.store.agent(run1.agentId);
+  assert.equal(a1.error,'GUARD_STOPPED');
+  const run1Snapshot=a1.runId?h.app.engine.store.run(a1.runId):null;
+  assert.ok(!run1Snapshot?.accepted);
+  const state=h.app.agents.guard.state(run1.agentId);
+  const blocked=state.decisions.at(-1)!;
+  assert.equal(blocked.verdict,'BLOCK');assert.equal(blocked.reasonCode,'ENABLED_RULE_SCOPE_CANDIDATES');assert.equal(blocked.consumed,false);
+  // Run 2: revoke the rule (revision 2) and the very same task completes through demo-valid.
+  const revokedPacket=h.app.agents.reports.export({version:'guard-incident-v1',reporterId:'self',incidentKey:incident.incidentKey,revision:2,status:'REVOKED',action:'start_task',boundary:boundaryScope,proposed:full,decision:incident.decision,executed:false,materialDigests:[],modelId:'m',modelSource:'TEST_TRANSPORT',at:new Date().toISOString()});
+  assert.equal(h.app.agents.reports.import(revokedPacket).status,'REVOKED');
+  assert.equal(h.app.agents.reports.rules()[0]!.status,'REVOKED');
+  h.scripted.mode='normal';
+  const run2=h.app.agents.createAgent({clientRequestId:'rule-revoked',prompt:'按结构化约束执行',constraints:full});
+  for(let n=0;n<800;n++){
+   const a=h.app.agents.store.agent(run2.agentId);
+   if(a.finishedAt)break;
+   await new Promise(r=>setTimeout(r,25));
+  }
+  const a2=h.app.agents.store.agent(run2.agentId);
+  assert.equal(a2.status,'COMPLETED');
+  const run2Snapshot=h.app.engine.store.run(a2.runId!);
+  assert.ok(run2Snapshot?.accepted);
+ }finally{delete process.env.GUARD_SELF_KEY;await h.close();}
+});
+
+test('Monitor listing aggregates guarded agents with decisions and review wait',async()=>{
+ const h=await harness();
+ try{
+  const {missing,explanation,...scope}=structuredClone(h.proposal);
+  h.scripted.mode='redteam-valid';
+  h.proposal.account=`0x${'9'.repeat(40)}`;
+  const run=h.app.agents.createAgent({clientRequestId:'monitor-listed',prompt:'只执行调用者结构化约束',constraints:scope});
+  for(let n=0;n<800;n++){
+   const a=h.app.agents.store.agent(run.agentId);
+   if(a.finishedAt)break;
+   await new Promise(r=>setTimeout(r,25));
+  }
+  const a=h.app.agents.store.agent(run.agentId);
+  assert.equal(a.error,'GUARD_STOPPED');
+  const listing=h.app.agents.guardTasks();
+  const row=listing.tasks.find((t:{agentId:string})=>t.agentId===run.agentId);
+  assert.ok(row,'created agent must appear in monitor listing');
+  assert.equal(row!.agentId,run.agentId);
+  assert.ok(row!.guard,'guard state must be attached');
+  assert.equal(row!.guard!.decisions>=1,true);
+  assert.equal(row!.guard!.blocked>=1,true);
+  assert.equal(row!.guard!.lastReasonCode,'SCOPE_account');
+  assert.equal(typeof row!.guard!.reviewWaitMs,'number');
+  assert.equal(row!.guard!.boundarySource,'CALLER');
+ }finally{await h.close();}
 });

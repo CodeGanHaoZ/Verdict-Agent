@@ -1531,3 +1531,64 @@ dd {
 .pi-body .hint {
   margin-top: 9px;
 }
+
+/* ---- 威胁账本（FR-G04） ---- */
+.import-box textarea {
+  width: 100%;
+  min-height: 92px;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.threat-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, var(--muted));
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+.threat-id {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.threat-meta {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+.threat-status {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ---- 外审监控台 / 审计时间线（FR-G07） ---- */
+.tl { display: flex; flex-direction: column; gap: 6px; }
+.tl-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #e2e5dc);
+  border-radius: 8px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+.tl-row .tl-seq { color: var(--muted); text-align: right; }
+.tl-row .tl-main { min-width: 0; }
+.tl-row .tl-main small { display: block; color: var(--muted); word-break: break-all; }
+.tl-row .tl-mark { text-align: right; font-weight: 600; }
+.tl-row .tl-mark small { display: block; font-weight: 400; color: var(--muted); word-break: break-all; }
+.tl-row.hard { border-color: #d8a29a; background: #f8ece9; }
+.tl-row.model { border-color: #d8a29a; background: #fbf1ef; }
+.tl-row.warn { border-color: #e0d2a8; background: #faf4e4; }
+.tl-row.ok { border-color: var(--line, #e2e5dc); }

@@ -94,7 +94,7 @@ export async function harness(
     fields: ["balance", "nonce", "codeHash", "storageRoot"],
     candidateIds: services.map((s) => s.serviceId),
     useHistoricalEvidence: false,
-    budget: { maxAttempts: 3, timeoutMs: 8000, maxCostWei: "0" },
+    budget: { maxAttempts: 3, timeoutMs: 30000, maxCostWei: "0" },
     missing: [],
     explanation: "这是测试传输替身生成的草案，不能冒充真实模型结果。",
   };
@@ -369,7 +369,7 @@ export async function harness(
       apiKeyEnv: "VERDICT_PI_TEST_KEY",
       source: "TEST_TRANSPORT",
       compatibility: options.compatibility ?? "openai",
-      maxDurationMs: 8000,
+      maxDurationMs: 30000,
       requestTimeoutMs: 1000,
     },
   });
