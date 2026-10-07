@@ -17,7 +17,7 @@ config.wallet = {
     name: "BOT Chain Testnet",
     rpcUrlEnv: "VERDICT_WALLET_RPC_URL",
     maxValueWei: "100000000000000",
-    maxTotalFeeWei: "100000000000000",
+    maxTotalFeeWei: "1000000000000000",
   }],
   rpcTimeoutMs: 8000,
   reviewTimeoutMs: 90000,
