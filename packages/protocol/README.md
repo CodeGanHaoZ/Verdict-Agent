@@ -6,4 +6,4 @@ A 包共享协议已实现。版本：schemaVersion `1.0.0`、ruleVersion `eth-a
 
 `canonical_json` 固定 RFC 8785 序列化，`parse_json_strict` 拒绝重复键、注释、非法 Unicode、不安全数值及过大输入。协议包没有网络、数据库、私钥或密码学执行。
 
-在根目录运行 `npm run typecheck` 和 `npm test`。输入格式、示例命令与兼容边界见 [A 包说明](../../docs/11-A包实现与复验.md)。Candidate 与 RunSnapshot 的业务字段仍待 B 协作落实；其状态枚举已提供。
+在根目录运行 `npm run typecheck` 和 `npm test`。输入格式、示例命令与兼容边界见 [A 包说明](../../docs/11-A包实现与复验.md)。B 已以增量方式导出 Candidate、RunSnapshot、ReplaySnapshot、Observation、Publication 及创建任务／导入 schema，API_VERSION 为 1.0.0；A 的既有 schema、枚举与验收语义未改变。具体业务字段及 HTTP 请求见 [B 实现](../../docs/13-B包实现与复验.md)。

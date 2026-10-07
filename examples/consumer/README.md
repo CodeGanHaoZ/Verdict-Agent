@@ -1,21 +1,13 @@
-# 最小调用方示例
+# 最小消费方
 
-负责人：B。状态：职责目录已建立，尚无业务实现或可运行命令。
+启动 B 服务后运行：
 
-## 职责
+```bash
+npm run example:b -- http://127.0.0.1:3001 success
+npm run example:b -- http://127.0.0.1:3001 fallback
+npm run example:b -- http://127.0.0.1:3001 all-fail
+```
 
-展示宿主如何提出任务、消费通过的状态事实卡，并处理拒收或停止。
+`consume(base, input)` 提交严格 CreateRun、轮询 RunSnapshot，返回服务器实际结论。调用方仅在 `status=SUCCEEDED && accepted !== null` 时继续依赖该数据；STOPPED/ERROR 要中止依赖。示例使用固定主网账户证明、当前请求有效期和独立 requestId，关闭历史证据以稳定展示替换路径。没有模型、PI、支付或伪造 PASS。
 
-## 第一批工作
-
-先用最小工具循环调用 verify_before_use 或 server API；PI／模型接入仍按 P1。
-
-## 依赖与边界
-
-不得使用未通过的数据继续任务；示例脚本不是已完成的自主 Agent。
-
-## 完成检查
-
-成功、自动替换和全部失败三个结果都能解释，数字与结论来自真实验证。
-
-实际代码、依赖和命令落地后更新本文件，注明已运行的检查与限制。协作依据：[根规则](../../AGENTS.md)、[工程结构](../../docs/09-工程结构.md)、[接口约定](../../docs/08-接口约定.md)。
+C 可复用 `@verdict/protocol` 的 CreateRunSchema / RunSnapshotSchema，并直接通过相同 HTTP API 消费服务、逐项 checks 和下载链接，见 [接口](../../docs/08-接口约定.md)。

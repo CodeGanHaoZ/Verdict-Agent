@@ -12,6 +12,18 @@
     },
     {
       "path": "apps/verifier-cli"
+    },
+    {
+      "path": "packages/observations"
+    },
+    {
+      "path": "services/demo"
+    },
+    {
+      "path": "apps/server"
+    },
+    {
+      "path": "examples/consumer"
     }
   ]
 }

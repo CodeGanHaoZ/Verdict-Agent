@@ -124,3 +124,76 @@ export const ReplayResultSchema = z.strictObject({
   recomputedResult: VerificationResultSchema.optional(),
 });
 export type ReplayResult = z.infer<typeof ReplayResultSchema>;
+
+// Additive B API objects. A's schema/rule versions and verdict semantics are unchanged.
+export const API_VERSION = '1.0.0';
+export const ObservationStatusSchema = z.enum(['OK', 'UNSUPPORTED', 'RATE_LIMITED', 'TIMEOUT', 'ERROR', 'INVALID_RESPONSE']);
+export const CapabilityStatusSchema = z.enum(['SUPPORTED', 'UNSUPPORTED', 'UNKNOWN']);
+export const RuntimeReasonSchema = z.enum([...ReasonCodeSchema.options, 'NETWORK_ERROR', 'INVALID_RESPONSE', 'SERVICE_ID_MISMATCH', 'COST_UNKNOWN', 'INTERRUPTED', 'INTERNAL_ERROR', 'CONTEXT_UNAVAILABLE']);
+export const CapabilitiesSchema = z.strictObject({
+  dataChainIds: z.array(DecimalSchema).nullable(), blockHashes: z.array(HashSchema).nullable(),
+  accounts: z.array(AddressSchema).nullable(), fields: z.array(FieldSchema),
+  proof: CapabilityStatusSchema, signature: CapabilityStatusSchema, methods: z.array(z.string()),
+});
+export const ObservationSchema = z.strictObject({
+  observationId: Id, serviceId: Id, method: z.string(), requestedBlock: z.string().nullable(),
+  account: AddressSchema.nullable(), source: ProvenanceModeSchema, recordedAt: z.string().datetime(),
+  status: ObservationStatusSchema, capability: CapabilityStatusSchema,
+  latencyMs: z.number().nonnegative(), httpStatus: z.number().int().nullable(), rpcCode: z.number().int().nullable(),
+  response: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
+  correctness: z.literal('NOT_CHECKED'),
+});
+export const MetricGroupSchema = z.strictObject({
+  source: ProvenanceModeSchema, method: z.string(), requestedBlock: z.string().nullable(),
+  windowStart: z.string().datetime(), windowEnd: z.string().datetime(), sampleCount: z.number().int(),
+  responses: z.number().int(), errors: z.number().int(), unsupported: z.number().int(),
+  rateLimited: z.number().int(), timeouts: z.number().int(), medianLatencyMs: z.number().nullable(),
+  verdictCounts: z.strictObject({ PASS: z.number().int(), FAIL: z.number().int(), UNVERIFIABLE: z.number().int() }),
+});
+export const CandidateSchema = z.strictObject({
+  serviceId: Id, version: Id, transport: z.enum(['signed-http', 'rpc-observation']),
+  source: ProvenanceModeSchema, declaredCapabilities: CapabilitiesSchema,
+  observedCapabilities: z.array(ObservationSchema), metrics: z.array(MetricGroupSchema),
+  quoteWei: DecimalSchema.nullable(), eligible: z.boolean(), rankingReasons: z.array(z.string()),
+  applicableEvidenceIds: z.array(HashSchema),
+});
+export const AttemptSchema = z.strictObject({
+  status: z.enum(['RUNNING', 'COMPLETED', 'INTERRUPTED']).default('COMPLETED'),
+  attemptId: Id, serviceId: Id, startedAt: z.string().datetime(), endedAt: z.string().datetime(),
+  source: ProvenanceModeSchema, observationStatus: ObservationStatusSchema,
+  runtimeReason: RuntimeReasonSchema.nullable(), latencyMs: z.number(), reservedCostWei: DecimalSchema,
+  verification: VerificationResultSchema.nullable(), evidenceId: HashSchema.nullable(),
+});
+export const RunSnapshotSchema = z.strictObject({
+  apiVersion: z.literal(API_VERSION), runId: Id, status: RunStatusSchema, task: TaskSpecSchema,
+  contextId: Id, useHistoricalEvidence: z.boolean(), candidates: z.array(CandidateSchema), attempts: z.array(AttemptSchema),
+  accepted: z.strictObject({ serviceId: Id, evidenceId: HashSchema, blockHash: HashSchema, values: ValuesSchema }).nullable(),
+  stopReason: RuntimeReasonSchema.nullable(), spentWei: DecimalSchema,
+  createdAt: z.string().datetime(), startedAt: z.string().datetime().nullable(), finishedAt: z.string().datetime().nullable(),
+});
+export const CreateRunSchema = z.strictObject({
+  task: TaskSpecSchema, contextId: Id, candidateIds: z.array(Id).min(1).max(32).optional(),
+  useHistoricalEvidence: z.boolean().default(true),
+});
+export const ReplaySnapshotSchema = z.strictObject({
+  apiVersion: z.literal(API_VERSION), replayId: Id, evidenceId: HashSchema, contextId: Id,
+  status: ReplayStatusSchema, result: ReplayResultSchema.nullable(), reportConsistent: z.boolean().nullable(),
+  error: z.string().nullable(), createdAt: z.string().datetime(), finishedAt: z.string().datetime().nullable(),
+});
+export const PublicationSchema = z.strictObject({
+  status: AnchorStatusSchema, adapter: z.enum(['not_configured', 'test_failure']),
+  attemptedAt: z.string().datetime().nullable(), error: z.string().nullable(),
+  attemptId: Id.nullable().default(null), attempts: z.number().int().nonnegative().default(0),
+});
+export const ImportEvidenceSchema = z.strictObject({ bundle: EvidenceBundleSchema, manifest: EvidenceManifestSchema, contextId: Id });
+export const CreateReplaySchema = z.strictObject({ evidenceId: HashSchema, contextId: Id });
+export type Candidate = z.infer<typeof CandidateSchema>;
+export type Capabilities = z.infer<typeof CapabilitiesSchema>;
+export type Observation = z.infer<typeof ObservationSchema>;
+export type MetricGroup = z.infer<typeof MetricGroupSchema>;
+export type Attempt = z.infer<typeof AttemptSchema>;
+export type RunSnapshot = z.infer<typeof RunSnapshotSchema>;
+export type CreateRun = z.infer<typeof CreateRunSchema>;
+export type ReplaySnapshot = z.infer<typeof ReplaySnapshotSchema>;
+export type Publication = z.infer<typeof PublicationSchema>;
+export type RuntimeReason = z.infer<typeof RuntimeReasonSchema>;

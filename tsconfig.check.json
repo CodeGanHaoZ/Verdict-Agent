@@ -12,6 +12,7 @@
   "include": [
     "packages/*/test/**/*.ts",
     "apps/verifier-cli/test/**/*.ts",
-    "fixtures/core/*.ts"
+    "fixtures/core/*.ts",
+    "tests/integration/**/*.ts"
   ]
 }
