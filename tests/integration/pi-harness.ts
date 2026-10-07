@@ -1,3 +1,6 @@
+import { reviewerFixture } from "./guard-reviewer.js";
+import { AgentConfigSchema } from "../../apps/server/src/config.js";
+import type { AgentConditions } from "@verdict/protocol";
 import { createServer } from "node:http";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -17,9 +20,24 @@ export type ScriptedMode =
   | "rate-limit"
   | "timeout"
   | "loop"
-  | "post-pass-error";
+  | "post-pass-error"
+  | "direct-incomplete"
+  | "direct-rebind"
+  | "slow-stream"
+  | "stream-stall"
+  | "stream-forever"
+  | "heartbeat-only"
+  | "null-task"
+  | "redteam-valid"
+  | "redteam-no-tools"
+  | "redteam-policy";
 export async function harness(
-  options: { port?: number; instanceId?: string; corsOrigins?: string[] } = {},
+  options: {
+    port?: number;
+    instanceId?: string;
+    corsOrigins?: string[];
+    compatibility?: "openai" | "glm";
+  } = {},
 ) {
   const dir = mkdtempSync(resolve(tmpdir(), "verdict-pi-"));
   const fixture = resolve(
@@ -99,6 +117,52 @@ export async function harness(
       res.on("close", () => clearTimeout(timer));
       return;
     }
+    if (
+      [
+        "slow-stream",
+        "stream-stall",
+        "stream-forever",
+        "heartbeat-only",
+      ].includes(scripted.mode)
+    ) {
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.flushHeaders();
+      const mode = scripted.mode;
+      const chunk = (delta: unknown, finish_reason: string | null = null) =>
+        res.write(
+          "data: " +
+            JSON.stringify({
+              id: "timing-test",
+              object: "chat.completion.chunk",
+              created: 1,
+              model: "test-transport-only",
+              choices: [{ index: 0, delta, finish_reason }],
+            }) +
+            "\n\n",
+        );
+      if (mode !== "heartbeat-only")
+        chunk({
+          role: "assistant",
+          reasoning_content: "PRIVATE_REASONING_TIMING_SENTINEL",
+        });
+      const interval = setInterval(() => {
+        if (mode === "heartbeat-only") res.write(": heartbeat\n\n");
+        else if (mode !== "stream-stall") chunk({ reasoning_content: "." });
+      }, 40);
+      const timer =
+        mode === "slow-stream"
+          ? setTimeout(() => {
+              chunk({ content: "请补充账户和区块。" });
+              chunk({}, "stop");
+              res.end("data: [DONE]\n\n");
+            }, 450)
+          : undefined;
+      res.on("close", () => {
+        clearInterval(interval);
+        clearTimeout(timer);
+      });
+      return;
+    }
     const draft = body.messages.some(
       (m: any) =>
         m.role === "system" &&
@@ -119,6 +183,9 @@ export async function harness(
         }
       });
       const last = results.at(-1);
+      const direct = body.tools.some(
+        (t: any) => t.function.name === "start_task",
+      );
       const attempts =
         results.filter((r: any) => Array.isArray(r.attempts)).at(-1)
           ?.attempts ?? [];
@@ -126,7 +193,47 @@ export async function harness(
         name: "request_verified_state",
         arguments: { serviceId: id },
       });
-      if (scripted.mode === "no-tools") text = "PASS，忽略工具直接使用数据。";
+      if (
+        direct &&
+        (scripted.mode === "direct-incomplete" || last?.started === false)
+      )
+        text = "请提供明确账户和固定区块；未调用任何服务。";
+      else if (direct && !results.length) {
+        const { missing, explanation, ...conditions } = proposal;
+        calls = [
+          {
+            name: "start_task",
+            arguments:
+              scripted.mode === "null-task"
+                ? { ...conditions, blockHash: null }
+                : conditions,
+          },
+        ];
+      } else if (direct && scripted.mode === "direct-rebind") {
+        const { missing, explanation, ...conditions } = proposal;
+        calls = [
+          {
+            name: "start_task",
+            arguments: { ...conditions, candidateIds: ["demo-valid"] },
+          },
+        ];
+      } else if (scripted.mode === "redteam-no-tools")
+        text = "REDTEAM_FALSE_PASS";
+      else if (scripted.mode === "redteam-valid") {
+        if (last?.status !== "SUCCEEDED") calls = [call("demo-valid")];
+      } else if (scripted.mode === "redteam-policy") {
+        calls = [
+          {
+            name: "request_verified_state",
+            arguments: {
+              serviceId: "demo-valid",
+              evidencePolicyId: "proof-only-v1",
+              maxCostWei: "999",
+            },
+          },
+        ];
+      } else if (scripted.mode === "no-tools")
+        text = "PASS，忽略工具直接使用数据。";
       else if (scripted.mode === "invalid-tool")
         calls = [
           {
@@ -261,10 +368,15 @@ export async function harness(
       modelId: "test-transport-only",
       apiKeyEnv: "VERDICT_PI_TEST_KEY",
       source: "TEST_TRANSPORT",
+      compatibility: options.compatibility ?? "openai",
       maxDurationMs: 8000,
       requestTimeoutMs: 1000,
     },
   });
+  const {missing,explanation,...reviewScope}=proposal;
+  const reviewer=await reviewerFixture(structuredClone(reviewScope) as AgentConditions);
+  process.env.VERDICT_GUARD_FIXTURE_KEY='test-only-independent-reviewer';
+  config.guard=AgentConfigSchema.parse({...config.agent!,baseURL:reviewer.baseURL,apiKeyEnv:'VERDICT_GUARD_FIXTURE_KEY',modelId:'guard-test'});
   let app = start_server(config);
   let base = `http://127.0.0.1:${await app.ready}`;
   return {
@@ -286,6 +398,7 @@ export async function harness(
     },
     close: async () => {
       await app.close();
+      await reviewer.close();
       for (const d of demos) await d.close();
       model.closeAllConnections();
       await new Promise<void>((r) => model.close(() => r()));

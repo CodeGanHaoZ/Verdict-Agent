@@ -24,10 +24,45 @@ if (
 if (!/^[A-Z_][A-Z0-9_]*$/.test(apiKeyEnv))
   throw new Error("Invalid key environment variable name");
 const config = JSON.parse(readFileSync(file, "utf8"));
+const compatibility = process.env.VERDICT_PI_COMPAT ?? "openai";
+if (!["openai", "glm"].includes(compatibility))
+  throw new Error("VERDICT_PI_COMPAT must be openai or glm");
+const outputTokens = Number(process.env.VERDICT_PI_OUTPUT_TOKENS ?? 1024);
+if (!Number.isInteger(outputTokens) || outputTokens < 64 || outputTokens > 8192)
+  throw new Error("VERDICT_PI_OUTPUT_TOKENS must be 64..8192");
+const timeouts = {
+  requestTimeoutMs: Number(process.env.VERDICT_PI_REQUEST_TIMEOUT_MS ?? 90000),
+  firstEventTimeoutMs: Number(
+    process.env.VERDICT_PI_FIRST_EVENT_TIMEOUT_MS ?? 60000,
+  ),
+  streamIdleTimeoutMs: Number(
+    process.env.VERDICT_PI_STREAM_IDLE_TIMEOUT_MS ?? 15000,
+  ),
+};
+if (
+  Object.values(timeouts).some(
+    (n) => !Number.isInteger(n) || n < 1 || n > 120000,
+  )
+)
+  throw new Error("Model timeouts must be 1..120000 ms");
+const maxInputChars = Number(
+  process.env.VERDICT_PI_MAX_INPUT_CHARS ??
+    (compatibility === "glm" ? 64000 : 32000),
+);
+if (
+  !Number.isInteger(maxInputChars) ||
+  maxInputChars < 1000 ||
+  maxInputChars > 64000
+)
+  throw new Error("VERDICT_PI_MAX_INPUT_CHARS must be 1000..64000");
 config.agent = {
+  maxInputChars,
+  ...timeouts,
   baseURL,
   modelId,
   apiKeyEnv,
+  compatibility,
+  outputTokens,
   source: "LIVE",
   accountAliases: { weth: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },
   replayTargets: [{ id: "local-two", baseURL: "http://127.0.0.1:3002" }],

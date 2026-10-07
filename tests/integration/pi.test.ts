@@ -464,3 +464,214 @@ test("failed atomic-consumption commit cannot leak an in-memory PASS as an adopt
     await h.app.engine.releaseManaged(reserved.run.runId);
   }
 });
+
+test("direct PI starts without drafts; concurrent submissions bind once and reuse guarded verification", async () => {
+  h.scripted.mode = "normal";
+  const before = Number(
+    h.app.engine.store.db
+      .prepare("SELECT count(*) AS n FROM agent_drafts")
+      .get()!.n,
+  );
+  const input = {
+    clientRequestId: randomUUID(),
+    prompt: `核验 ${h.proposal.account} 在固定检查点 ${h.proposal.blockHash} 的账户状态。`,
+  };
+  const results = await Promise.all(
+    Array.from({ length: 8 }, () => api("/api/agent/runs", input)),
+  );
+  assert(results.every((r) => r.status === 202));
+  assert.equal(new Set(results.map((r) => r.data.agentId)).size, 1);
+  const a = await waitAgent(results[0].data.agentId);
+  assert.equal(a.draftId, null);
+  assert(a.runId);
+  assert.equal(a.status, "COMPLETED");
+  const run = h.app.engine.store.run(a.runId);
+  assert.deepEqual(
+    run.attempts.map((t) => t.verification?.verdict),
+    ["FAIL", "FAIL", "PASS"],
+  );
+  assert.equal(
+    Number(
+      h.app.engine.store.db
+        .prepare("SELECT count(*) AS n FROM agent_drafts")
+        .get()!.n,
+    ),
+    before,
+  );
+  assert.equal(
+    (await api("/api/agent/runs", { ...input, prompt: "changed" })).status,
+    409,
+  );
+  assert.equal((await api("/api/agent/runs", input)).data.runId, a.runId);
+});
+
+test("direct PI missing conditions, rebinding and cancellation cannot adopt data", async () => {
+  h.scripted.mode = "direct-incomplete";
+  const missing = await api("/api/agent/runs", {
+    clientRequestId: randomUUID(),
+    prompt: "检查最新状态",
+  });
+  const stopped = await waitAgent(missing.data.agentId);
+  assert.equal(stopped.status, "STOPPED");
+  assert.equal(stopped.runId, null);
+  h.scripted.mode = "direct-rebind";
+  const rebound = await api("/api/agent/runs", {
+    clientRequestId: randomUUID(),
+    prompt: `核验 ${h.proposal.account} 在固定检查点 ${h.proposal.blockHash}`,
+  });
+  const failed = await waitAgent(rebound.data.agentId);
+  assert.equal(failed.error, "TOOL_INVALID");
+  assert(failed.runId);
+  assert.equal(h.app.engine.store.run(failed.runId).attempts.length, 0);
+  h.scripted.mode = "timeout";
+  const waiting = await api("/api/agent/runs", {
+    clientRequestId: randomUUID(),
+    prompt: "核验账户",
+  });
+  await api(`/api/agent/runs/${waiting.data.agentId}/stop`, {});
+  const cancelled = await waitAgent(waiting.data.agentId);
+  assert.equal(cancelled.status, "STOPPED");
+  assert.equal(cancelled.runId, null);
+  h.scripted.mode = "normal";
+});
+
+test("GLM transport uses its explicit token field without unsupported thinking switches", async () => {
+  const configured = await harness({ compatibility: "glm" });
+  try {
+    configured.app.engine.config.agent!.outputTokens = 4096;
+    const res = await fetch(configured.base + "/api/agent/runs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        clientRequestId: randomUUID(),
+        prompt: `核验 ${configured.proposal.account} 在固定检查点 ${configured.proposal.blockHash}`,
+      }),
+    });
+    const { agentId } = (await res.json()) as { agentId: string };
+    let a;
+    for (let i = 0; i < 400; i++) {
+      a = configured.app.agents.store.agent(agentId);
+      if (a.finishedAt) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    assert.equal(a!.status, "COMPLETED");
+    assert(configured.scripted.requests.length > 0);
+    for (const r of configured.scripted.requests) {
+      assert.equal(r.max_tokens, 4096);
+      assert.equal(r.max_completion_tokens, undefined);
+      assert.equal(r.thinking, undefined);
+      assert.equal(r.store, undefined);
+    }
+  } finally {
+    await configured.close();
+  }
+});
+
+test("model timing distinguishes first-event wait, stream stalls and a hard request deadline without logging reasoning", async () => {
+  const c = h.app.engine.config.agent!;
+  const saved = {
+    requestTimeoutMs: c.requestTimeoutMs,
+    firstEventTimeoutMs: c.firstEventTimeoutMs,
+    streamIdleTimeoutMs: c.streamIdleTimeoutMs,
+  };
+  try {
+    for (const [mode, stage, total, first, idle] of [
+      ["timeout", "FIRST_EVENT", 1200, 200, 150],
+      ["heartbeat-only", "FIRST_EVENT", 1200, 200, 150],
+      ["stream-stall", "STREAM_IDLE", 1200, 300, 150],
+      ["stream-forever", "REQUEST_TOTAL", 450, 250, 150],
+      ["slow-stream", null, 1500, 250, 150],
+    ] as const) {
+      h.scripted.mode = mode;
+      Object.assign(c, {
+        requestTimeoutMs: total,
+        firstEventTimeoutMs: first,
+        streamIdleTimeoutMs: idle,
+      });
+      const created = await api("/api/agent/runs", {
+        clientRequestId: randomUUID(),
+        prompt: "请检查账户状态",
+      });
+      const a = await waitAgent(created.data.agentId);
+      const events = (await api(`/api/agent/runs/${a.agentId}/events?after=0`))
+        .data.events;
+      const timings = events.filter((e: any) => e.type === "MODEL_RESPONSE");
+      assert.equal(timings.length, 1);
+      const t = timings[0].data;
+      assert.equal(t.timeoutStage, stage);
+      assert.equal(t.completion, stage ? "TIMEOUT" : "COMPLETED");
+      assert.equal(a.error, stage ? "MODEL_TIMEOUT" : null);
+      assert.equal(a.runId, null);
+      assert(
+        !JSON.stringify(events).includes("PRIVATE_REASONING_TIMING_SENTINEL"),
+      );
+      if (mode === "timeout") assert.equal(t.headersMs, null);
+      if (mode === "heartbeat-only") {
+        assert(t.firstByteMs !== null);
+        assert.equal(t.firstEventMs, null);
+      }
+      if (mode === "slow-stream") {
+        assert(t.firstEventMs !== null);
+        assert(t.firstOutputMs > t.firstEventMs);
+        assert(t.totalMs > first);
+      }
+    }
+  } finally {
+    Object.assign(c, saved);
+    h.scripted.mode = "normal";
+  }
+});
+
+test("overall task budget still aborts a healthy model stream before its longer request deadline", async () => {
+  const c = h.app.engine.config.agent!;
+  const saved = {
+    requestTimeoutMs: c.requestTimeoutMs,
+    firstEventTimeoutMs: c.firstEventTimeoutMs,
+    streamIdleTimeoutMs: c.streamIdleTimeoutMs,
+    maxDurationMs: c.maxDurationMs,
+  };
+  try {
+    Object.assign(c, {
+      requestTimeoutMs: 1500,
+      firstEventTimeoutMs: 500,
+      streamIdleTimeoutMs: 250,
+      maxDurationMs: 300,
+    });
+    h.scripted.mode = "stream-forever";
+    const created = await api("/api/agent/runs", {
+      clientRequestId: randomUUID(),
+      prompt: "检查账户",
+      constraints: {contextId:h.proposal.contextId,account:h.proposal.account,blockHash:h.proposal.blockHash,fields:h.proposal.fields,candidateIds:h.proposal.candidateIds,useHistoricalEvidence:false,budget:{...h.proposal.budget,timeoutMs:300}},
+    });
+    const a = await waitAgent(created.data.agentId);
+    assert.equal(a.error, "BUDGET_EXHAUSTED");
+    assert.equal(a.runId, null);
+    const events = (await api(`/api/agent/runs/${a.agentId}/events?after=0`))
+      .data.events;
+    const t = events.find((e: any) => e.type === "MODEL_RESPONSE").data;
+    assert.equal(t.completion, "CANCELLED");
+    assert.equal(t.timeoutStage, null);
+    assert(t.totalMs < 1500);
+  } finally {
+    Object.assign(c, saved);
+    h.scripted.mode = "normal";
+  }
+});
+
+test("an unknown task field can be null without inventing a target or generating a delivery", async () => {
+  h.scripted.mode = "null-task";
+  try {
+    const created = await api("/api/agent/runs", {
+      clientRequestId: randomUUID(),
+      prompt: `检查账户 ${h.proposal.account}；区块尚未指定。`,
+    });
+    const a = await waitAgent(created.data.agentId);
+    assert.equal(a.status, "STOPPED");
+    assert.equal(a.error, "GUARD_STOPPED");
+    assert.equal(a.runId, null);
+    const events = (await api(`/api/agent/runs/${a.agentId}/events?after=0`))
+      .data.events;
+    assert(!events.some((e: any) => e.type === 'TOOL_END' && e.toolName === 'request_verified_state'));  } finally {
+    h.scripted.mode = "normal";
+  }
+});

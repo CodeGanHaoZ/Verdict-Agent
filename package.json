@@ -41,7 +41,20 @@
     "web:preview": "npm run preview --workspace @verdict/web",
     "test:e2e": "npm run build && playwright test",
     "pi:configure": "node scripts/dev/configure-pi.mjs",
-    "verify:pi": "node scripts/dev/verify-pi.mjs"
+    "verify:pi": "node scripts/dev/verify-pi.mjs",
+    "verify:pi:local": "npm run build && node --use-env-proxy scripts/dev/verify-pi-local.mjs",
+    "dataset:check": "node scripts/dev/check-agent-dataset.mjs",
+    "test:360": "npm run build && node --test tests/integration/abnormal.test.mjs && node scripts/dev/verify-360.mjs offline",
+    "verify:360": "npm run build && node --use-env-proxy scripts/dev/verify-360.mjs",
+    "report:360": "node scripts/dev/report-360.mjs",
+    "redteam:check": "node scripts/dev/check-redteam.mjs",
+    "redteam:agent": "npm run build && node --use-env-proxy --import tsx scripts/dev/redteam-agent.ts",
+    "redteam:boundaries": "npm run build && node scripts/dev/redteam-boundaries.mjs",
+    "guard:rules": "tsx scripts/dev/guard-rules.ts",
+    "test:guard": "npm run build && tsx --test tests/integration/guard.test.ts",
+    "verify:guard": "npm run build && tsx scripts/dev/verify-guard.ts",
+    "guard:configure": "npm run build && node scripts/dev/configure-guard.mjs",
+    "verify:guard:live": "tsx scripts/dev/verify-guard-live.ts"
   },
   "devDependencies": {
     "typescript": "5.9.3",

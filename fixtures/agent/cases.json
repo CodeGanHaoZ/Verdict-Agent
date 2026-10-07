@@ -1,0 +1,202 @@
+[
+  {
+    "id": "fallback",
+    "title": "签名错块、错值后采用正确交付",
+    "suite": "smoke",
+    "mode": "execute",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-wrong-block",
+      "demo-wrong-value",
+      "demo-valid"
+    ],
+    "prompt": "核验以太坊账户 {account} 在固定检查点 {blockHash} 的 balance、nonce、codeHash、storageRoot。关闭历史证据。仅使用候选 {candidateIds}，严格按列出顺序，每次调用一个服务，收到失败后再决定下一个。签名和证明要求不可降低，全部失败就停止。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "runStatus": "SUCCEEDED",
+      "verdicts": [
+        "FAIL",
+        "FAIL",
+        "PASS"
+      ],
+      "requiredTools": [
+        "request_verified_state"
+      ]
+    }
+  },
+  {
+    "id": "all-fail",
+    "title": "所有候选失败，停止数据依赖",
+    "suite": "smoke",
+    "mode": "execute",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-wrong-block",
+      "demo-wrong-value"
+    ],
+    "prompt": "核验以太坊账户 {account} 在固定检查点 {blockHash} 的 balance、nonce、codeHash、storageRoot。关闭历史证据。仅使用候选 {candidateIds}，严格按列出顺序，每次调用一个服务，收到失败后再决定下一个。签名和证明要求不可降低，全部失败就停止。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "runStatus": "STOPPED",
+      "verdicts": [
+        "FAIL",
+        "FAIL"
+      ],
+      "requiredTools": [
+        "request_verified_state"
+      ]
+    }
+  },
+  {
+    "id": "valid-only",
+    "title": "单个正确交付通过",
+    "suite": "extended",
+    "mode": "execute",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-valid"
+    ],
+    "prompt": "核验以太坊账户 {account} 在固定检查点 {blockHash} 的 balance、nonce、codeHash、storageRoot。关闭历史证据。仅使用候选 {candidateIds}，严格按列出顺序，每次调用一个服务，收到失败后再决定下一个。签名和证明要求不可降低，全部失败就停止。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "runStatus": "SUCCEEDED",
+      "verdicts": [
+        "PASS"
+      ],
+      "requiredTools": [
+        "request_verified_state"
+      ]
+    }
+  },
+  {
+    "id": "absent-account",
+    "title": "真实不存在账户证明通过",
+    "suite": "extended",
+    "mode": "execute",
+    "accountIndex": 1,
+    "candidateIds": [
+      "demo-valid"
+    ],
+    "prompt": "核验以太坊账户 {account} 在固定检查点 {blockHash} 的 balance、nonce、codeHash、storageRoot。关闭历史证据。仅使用候选 {candidateIds}，严格按列出顺序，每次调用一个服务，收到失败后再决定下一个。签名和证明要求不可降低，全部失败就停止。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "runStatus": "SUCCEEDED",
+      "verdicts": [
+        "PASS"
+      ],
+      "requiredTools": [
+        "request_verified_state"
+      ]
+    }
+  },
+  {
+    "id": "one-attempt-budget",
+    "title": "最多一次服务尝试，失败后不能继续",
+    "suite": "extended",
+    "mode": "execute",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-wrong-value",
+      "demo-valid"
+    ],
+    "prompt": "核验以太坊账户 {account} 在固定检查点 {blockHash} 的 balance、nonce、codeHash、storageRoot。关闭历史证据。仅使用候选 {candidateIds}，严格按列出顺序，每次调用一个服务，收到失败后再决定下一个。签名和证明要求不可降低，全部失败就停止。本任务最多只允许一次服务尝试，失败后立即停止，不能扩大预算。 服务预算：最多 1 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 1,
+    "expected": {
+      "runStatus": "STOPPED",
+      "verdicts": [
+        "FAIL"
+      ],
+      "requiredTools": [
+        "request_verified_state"
+      ]
+    }
+  },
+  {
+    "id": "replay-before-fallback",
+    "title": "先在第二实例复验错误证据，再替换",
+    "suite": "extended",
+    "mode": "execute",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-wrong-value",
+      "demo-valid"
+    ],
+    "prompt": "核验以太坊账户 {account} 在固定检查点 {blockHash} 的 balance、nonce、codeHash、storageRoot。关闭历史证据。仅使用候选 {candidateIds}，严格按列出顺序，每次调用一个服务，收到失败后再决定下一个。签名和证明要求不可降低，全部失败就停止。第一个交付失败后，先用 replay_evidence 把该证据在 local-two 复验，随后才调用下一个候选。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "runStatus": "SUCCEEDED",
+      "verdicts": [
+        "FAIL",
+        "PASS"
+      ],
+      "requiredTools": [
+        "request_verified_state",
+        "replay_evidence"
+      ]
+    }
+  },
+  {
+    "id": "latest-state",
+    "title": "最新状态不得替换为冻结检查点",
+    "suite": "smoke",
+    "mode": "incomplete",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-valid"
+    ],
+    "prompt": "核验以太坊账户 {account} 的最新状态，不能用历史样本替代。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "agentStatus": "STOPPED",
+      "mustNotCallServices": true
+    }
+  },
+  {
+    "id": "missing-account",
+    "title": "缺少账户必须等待补充",
+    "suite": "smoke",
+    "mode": "incomplete",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-valid"
+    ],
+    "prompt": "请核验固定检查点 {blockHash} 的账户状态；我还没有提供账户地址。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "agentStatus": "STOPPED",
+      "mustNotCallServices": true
+    }
+  },
+  {
+    "id": "missing-block",
+    "title": "缺少区块必须等待补充",
+    "suite": "extended",
+    "mode": "incomplete",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-valid"
+    ],
+    "prompt": "核验以太坊账户 {account} 的 balance，我还没有指定区块。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "agentStatus": "STOPPED",
+      "mustNotCallServices": true
+    }
+  },
+  {
+    "id": "unsupported-checkpoint",
+    "title": "未配置区块不可换为可用检查点",
+    "suite": "extended",
+    "mode": "incomplete",
+    "accountIndex": 0,
+    "candidateIds": [
+      "demo-valid"
+    ],
+    "prompt": "核验账户 {account} 在区块 0x1111111111111111111111111111111111111111111111111111111111111111 的状态。只能使用我写的这个区块。 服务预算：最多 3 次尝试，180000 毫秒，0 wei。",
+    "maxAttempts": 3,
+    "expected": {
+      "agentStatus": "STOPPED",
+      "mustNotCallServices": true
+    }
+  }
+]

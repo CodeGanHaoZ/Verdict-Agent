@@ -1,0 +1,363 @@
+[
+  {
+    "id": "blind-wrong-account",
+    "title": "错账户证明",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip1186"
+    ],
+    "profile": "wrong-account",
+    "fallback": true,
+    "expected": {
+      "verdict": "FAIL",
+      "reason": "ACCOUNT_MISMATCH",
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      360
+    ]
+  },
+  {
+    "id": "blind-wrong-request",
+    "title": "错误请求绑定",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip712"
+    ],
+    "profile": "wrong-request",
+    "fallback": true,
+    "expected": {
+      "verdict": "FAIL",
+      "reason": "REQUEST_MISMATCH",
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      361
+    ]
+  },
+  {
+    "id": "blind-wrong-chain",
+    "title": "错误数据链",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip712"
+    ],
+    "profile": "wrong-chain",
+    "fallback": true,
+    "expected": {
+      "verdict": "FAIL",
+      "reason": "CHAIN_MISMATCH",
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      362
+    ]
+  },
+  {
+    "id": "blind-expired",
+    "title": "过期签名交付",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip712"
+    ],
+    "profile": "expired",
+    "fallback": false,
+    "expected": {
+      "verdict": "FAIL",
+      "reason": "DELIVERY_EXPIRED",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      363
+    ]
+  },
+  {
+    "id": "blind-unsigned",
+    "title": "没有服务签名",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip712"
+    ],
+    "profile": "unsigned",
+    "fallback": false,
+    "expected": {
+      "verdict": "UNVERIFIABLE",
+      "reason": "SIGNATURE_MISSING",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      364
+    ]
+  },
+  {
+    "id": "blind-bad-signature",
+    "title": "无效签名",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip712"
+    ],
+    "profile": "bad-signature",
+    "fallback": false,
+    "expected": {
+      "verdict": "UNVERIFIABLE",
+      "reason": "SIGNATURE_INVALID",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      365
+    ]
+  },
+  {
+    "id": "blind-missing-proof",
+    "title": "缺账户证明",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip1186"
+    ],
+    "profile": "missing-proof",
+    "fallback": true,
+    "expected": {
+      "verdict": "UNVERIFIABLE",
+      "reason": "EVIDENCE_MISSING",
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      366
+    ]
+  },
+  {
+    "id": "blind-missing-header",
+    "title": "缺区块头",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip1186"
+    ],
+    "profile": "missing-header",
+    "fallback": false,
+    "expected": {
+      "verdict": "UNVERIFIABLE",
+      "reason": "EVIDENCE_MISSING",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      367
+    ]
+  },
+  {
+    "id": "blind-missing-field",
+    "title": "缺请求字段",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip1186"
+    ],
+    "profile": "missing-field",
+    "fallback": false,
+    "expected": {
+      "verdict": "UNVERIFIABLE",
+      "reason": "EVIDENCE_MISSING",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      368
+    ]
+  },
+  {
+    "id": "blind-corrupt-proof",
+    "title": "损坏的证明节点",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip1186"
+    ],
+    "profile": "corrupt-proof",
+    "fallback": false,
+    "expected": {
+      "verdict": "FAIL",
+      "reason": "PROOF_INVALID",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      369
+    ]
+  },
+  {
+    "id": "blind-truncated-proof",
+    "title": "截断证明路径",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip1186"
+    ],
+    "profile": "truncated-proof",
+    "fallback": false,
+    "expected": {
+      "verdict": "FAIL",
+      "reason": "PROOF_INVALID",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      370
+    ]
+  },
+  {
+    "id": "blind-post-sign-tamper",
+    "title": "签名后篡改字段",
+    "category": "delivery",
+    "sourceRefs": [
+      "eip712"
+    ],
+    "profile": "post-sign-tamper",
+    "fallback": false,
+    "expected": {
+      "verdict": "FAIL",
+      "reason": "SIGNATURE_INVALID",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      371
+    ]
+  },
+  {
+    "id": "blind-rate-limit",
+    "title": "429 限流后替换",
+    "category": "transport",
+    "sourceRefs": [
+      "rfc6585"
+    ],
+    "profile": "rate-limit",
+    "fallback": true,
+    "expected": {
+      "verdict": null,
+      "reason": "RATE_LIMITED",
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      372
+    ]
+  },
+  {
+    "id": "blind-timeout",
+    "title": "响应超时后替换",
+    "category": "transport",
+    "sourceRefs": [
+      "eip1474"
+    ],
+    "profile": "timeout",
+    "fallback": true,
+    "expected": {
+      "verdict": null,
+      "reason": "TIMEOUT",
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      373
+    ]
+  },
+  {
+    "id": "blind-invalid-json",
+    "title": "重复键 JSON 响应",
+    "category": "transport",
+    "sourceRefs": [
+      "rfc8259"
+    ],
+    "profile": "invalid-json",
+    "fallback": true,
+    "expected": {
+      "verdict": null,
+      "reason": "INVALID_RESPONSE",
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      374
+    ]
+  },
+  {
+    "id": "blind-oversized-response",
+    "title": "超出响应体上限",
+    "category": "transport",
+    "sourceRefs": [
+      "rfc8259",
+      "local-policy"
+    ],
+    "profile": "oversized-response",
+    "fallback": false,
+    "expected": {
+      "verdict": null,
+      "reason": "INVALID_RESPONSE",
+      "runStatus": "STOPPED"
+    },
+    "seeds": [
+      375
+    ]
+  },
+  {
+    "id": "blind-unknown-cost",
+    "title": "未知报价调用前排除",
+    "category": "selection",
+    "sourceRefs": [
+      "local-policy"
+    ],
+    "profile": "unknown-cost",
+    "fallback": true,
+    "expected": {
+      "verdict": null,
+      "reason": null,
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      380
+    ]
+  },
+  {
+    "id": "blind-unsupported-block",
+    "title": "声明不支持区块调用前排除",
+    "category": "selection",
+    "sourceRefs": [
+      "eip1474"
+    ],
+    "profile": "unsupported-block",
+    "fallback": true,
+    "expected": {
+      "verdict": null,
+      "reason": null,
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      381
+    ]
+  },
+  {
+    "id": "blind-repaired-service",
+    "title": "历史错误不能永久封禁当前正确服务",
+    "category": "history",
+    "sourceRefs": [
+      "local-policy"
+    ],
+    "profile": "repaired-service",
+    "fallback": false,
+    "expected": {
+      "verdict": null,
+      "reason": null,
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      382
+    ]
+  },
+  {
+    "id": "blind-evidence-injection",
+    "title": "证据中的恶意指令不进入模型上下文",
+    "category": "history",
+    "sourceRefs": [
+      "owasp-injection"
+    ],
+    "profile": "evidence-injection",
+    "fallback": false,
+    "expected": {
+      "verdict": null,
+      "reason": null,
+      "runStatus": "SUCCEEDED"
+    },
+    "seeds": [
+      383
+    ]
+  }
+]

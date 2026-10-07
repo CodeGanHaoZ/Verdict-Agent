@@ -13,7 +13,12 @@ import {
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { Type } from "typebox";
 import { z } from "zod";
-import { type AgentError, type AgentUsage } from "@verdict/protocol";
+import {
+  type AgentError,
+  type AgentUsage,
+  type ModelRequestTiming,
+} from "@verdict/protocol";
+import { ModelTiming } from "./model-timing.js";
 import type { AgentConfig } from "./config.js";
 
 export class AgentFailure extends Error {
@@ -55,6 +60,7 @@ export function businessTool(
 export type PiCallbacks = {
   onRequest: () => void;
   onUsage: (message: AssistantMessage) => void;
+  onTiming?: (timing: ModelRequestTiming) => void;
   onText: (text: string) => void;
   onTool: (
     stage: "start" | "end",
@@ -62,7 +68,7 @@ export type PiCallbacks = {
     name: string,
     data: unknown,
   ) => void;
-  beforeTool: () => void;
+  beforeTool: (name: string, args: unknown) => void | Promise<void>;
   terminal?: () => boolean;
 };
 export async function drivePi(
@@ -84,6 +90,8 @@ export async function drivePi(
     api: "openai-completions",
     provider: "verdict-compatible",
     baseUrl: config.baseURL,
+    // Do not send thinking=disabled: the tested ModelArts GLM-5.3 rejects it.
+    // Provider reasoning shares the configured completion-token budget.
     reasoning: false,
     input: ["text"],
     contextWindow: config.contextWindow,
@@ -94,7 +102,13 @@ export async function drivePi(
       cacheRead: 0,
       cacheWrite: 0,
     },
-    compat: { supportsDeveloperRole: false, supportsReasoningEffort: false },
+    compat: {
+      supportsDeveloperRole: false,
+      supportsReasoningEffort: false,
+      ...(config.compatibility === "glm"
+        ? { supportsStore: false, maxTokensField: "max_tokens" as const }
+        : {}),
+    },
   };
   models.setProvider(
     createProvider({
@@ -114,13 +128,12 @@ export async function drivePi(
   let requests = 0,
     toolCalls = 0,
     reason: AgentError | null = null,
-    requestTimer: ReturnType<typeof setTimeout> | undefined;
+    currentTiming: ModelTiming | undefined;
   const fail = (value: AgentError) => {
     reason ??= value;
     agent.abort();
   };
   const streamFn: StreamFn = (m, ctx, options) => {
-    clearTimeout(requestTimer);
     if (input.signal.aborted) {
       fail("CANCELLED");
     }
@@ -161,17 +174,51 @@ export async function drivePi(
       return stream;
     }
     input.callbacks.onRequest();
-    requestTimer = setTimeout(
+    const timing = new ModelTiming(
+      requests,
+      config,
       () => fail("MODEL_TIMEOUT"),
-      config.requestTimeoutMs,
+      (value) => input.callbacks.onTiming?.(value),
     );
+    currentTiming = timing;
     return models.streamSimple(m, ctx, {
       ...options,
       fetch: async (url, init) => {
         const response = await fetch(url, { ...init, redirect: "error" });
+        timing.headers(response.status);
         if (response.status === 429) reason ??= "MODEL_RATE_LIMITED";
         else if (response.status >= 400) reason ??= "MODEL_ERROR";
-        return response;
+        if (!response.body) return response;
+        const reader = response.body.getReader();
+        const body = new ReadableStream<Uint8Array>({
+          async pull(controller) {
+            try {
+              const { done, value } = await reader.read();
+              if (done) {
+                controller.close();
+                reader.releaseLock();
+                return;
+              }
+              timing.bytes(value.byteLength);
+              controller.enqueue(value);
+            } catch (e) {
+              controller.error(e);
+              reader.releaseLock();
+            }
+          },
+          async cancel(reason) {
+            try {
+              await reader.cancel(reason);
+            } finally {
+              reader.releaseLock();
+            }
+          },
+        });
+        return new Response(body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
       },
       maxRetries: 0,
       maxRetryDelayMs: 1,
@@ -194,11 +241,11 @@ export async function drivePi(
     },
     streamFn,
     toolExecution: "sequential",
-    beforeToolCall: async () => {
+    beforeToolCall: async (context) => {
       if (reason || input.signal.aborted)
         return { block: true, reason: reason ?? "CANCELLED", terminate: true };
       try {
-        input.callbacks.beforeTool();
+        await input.callbacks.beforeTool(context.toolCall.name, context.args);
       } catch (e) {
         fail(e instanceof AgentFailure ? e.reason : "TOOL_INVALID");
         return { block: true, reason: reason!, terminate: true };
@@ -212,9 +259,19 @@ export async function drivePi(
       reason || input.callbacks.terminal?.() ? { action: "end" } : undefined,
   });
   agent.subscribe((event) => {
+    if (event.type === "message_update")
+      currentTiming?.event(event.assistantMessageEvent.type);
     if (event.type === "message_end" && event.message.role === "assistant") {
-      clearTimeout(requestTimer);
       const message = event.message;
+      currentTiming?.finish(
+        message.stopReason === "aborted"
+          ? "CANCELLED"
+          : message.stopReason === "error"
+            ? "ERROR"
+            : "COMPLETED",
+        message.stopReason,
+      );
+      currentTiming = undefined;
       input.callbacks.onUsage(message);
       const text = message.content
         .filter((c) => c.type === "text")
@@ -264,7 +321,7 @@ export async function drivePi(
     await agent.waitForIdle();
     if (reason) throw new AgentFailure(reason);
   } finally {
-    clearTimeout(requestTimer);
+    currentTiming?.finish(input.signal.aborted ? "CANCELLED" : "ERROR");
     input.signal.removeEventListener("abort", abort);
   }
 }

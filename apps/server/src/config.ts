@@ -30,6 +30,7 @@ export const AgentConfigSchema = z.strictObject({
   baseURL: Endpoint,
   modelId: z.string().min(1).max(160),
   apiKeyEnv: z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
+  compatibility: z.enum(["openai", "glm"]).default("openai"),
   source: z.enum(["LIVE", "TEST_TRANSPORT"]).default("LIVE"),
   accountAliases: z
     .record(z.string(), z.string().regex(/^0x[0-9a-f]{40}$/))
@@ -37,8 +38,10 @@ export const AgentConfigSchema = z.strictObject({
   draftRequests: z.number().int().min(1).max(2).default(2),
   runRequests: z.number().int().min(1).max(8).default(8),
   toolCalls: z.number().int().min(1).max(12).default(12),
-  requestTimeoutMs: z.number().int().min(1).max(30000).default(30000),
-  outputTokens: z.number().int().min(64).max(1024).default(1024),
+  requestTimeoutMs: z.number().int().min(1).max(120000).default(90000),
+  firstEventTimeoutMs: z.number().int().min(1).max(120000).default(60000),
+  streamIdleTimeoutMs: z.number().int().min(1).max(120000).default(15000),
+  outputTokens: z.number().int().min(64).max(8192).default(1024),
   contextWindow: z.number().int().min(4096).max(200000).default(32768),
   maxInputChars: z.number().int().min(1000).max(64000).default(32000),
   maxAttempts: z.number().int().min(1).max(100).default(3),
@@ -62,6 +65,12 @@ export const AgentConfigSchema = z.strictObject({
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export const ServerConfigSchema = z.strictObject({
   agent: AgentConfigSchema.optional(),
+  guard: AgentConfigSchema.optional(),
+  guardReports: z.strictObject({
+    reporterId:z.string().min(1).max(160),
+    signingKeyEnv:z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
+    trustedReporters:z.record(z.string(),z.string().max(2000)).default({}),
+  }).optional(),
   instanceId: z.string().regex(/^[\w.-]+$/),
   host: z.literal("127.0.0.1").default("127.0.0.1"),
   port: z.number().int().min(0).max(65535),

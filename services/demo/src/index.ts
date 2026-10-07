@@ -38,6 +38,19 @@ const ConfigSchema = z.strictObject({
     "timeout",
     "unsupported",
     "bad-signature",
+    "wrong-account",
+    "wrong-request",
+    "wrong-chain",
+    "expired",
+    "missing-header",
+    "missing-field",
+    "corrupt-proof",
+    "truncated-proof",
+    "unsigned",
+    "post-sign-tamper",
+    "invalid-json",
+    "oversized-response",
+    "repair-after-first",
   ]),
   testFaults: z.boolean().default(false),
   delayMs: z.number().int().min(0).max(10000).default(0),
@@ -98,6 +111,7 @@ export function start_demo(configInput: DemoConfig, launchId = "foreground") {
     "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS deliveries(request_id TEXT PRIMARY KEY, digest TEXT NOT NULL, body TEXT);",
   );
   const pending = new Map<string, Promise<DeliveryEnvelope>>();
+  let received = 0;
   const capabilities: Capabilities = {
     dataChainIds: ["1"],
     blockHashes: [primary.header.hash],
@@ -111,7 +125,7 @@ export function start_demo(configInput: DemoConfig, launchId = "foreground") {
   async function deliver(task: TaskSpec): Promise<DeliveryEnvelope> {
     if (config.delayMs) await new Promise((r) => setTimeout(r, config.delayMs));
     const chosen = config.variant === "wrong-block" ? alternate : primary;
-    const record = chosen.accounts.find(
+    let record = chosen.accounts.find(
       (a: { address: string }) => a.address === task.account,
     );
     const supported =
@@ -119,6 +133,10 @@ export function start_demo(configInput: DemoConfig, launchId = "foreground") {
       task.blockHash === primary.header.hash &&
       record &&
       config.variant !== "unsupported";
+    if (config.variant === "wrong-account")
+      record = primary.accounts.find(
+        (a: { address: string }) => a.address !== task.account,
+      );
     const now = String(Math.floor(Date.now() / 1000));
     const d = DeliveryEnvelopeSchema.parse({
       schemaVersion: "1.0.0",
@@ -134,7 +152,10 @@ export function start_demo(configInput: DemoConfig, launchId = "foreground") {
       response: supported
         ? {
             dataChainId: "1",
-            account: task.account,
+            account:
+              config.variant === "wrong-account"
+                ? record.address
+                : task.account,
             blockHash: chosen.header.hash,
             header: HeaderSchema.parse(chosen.header),
             accountProof: record.proof.accountProof,
@@ -147,13 +168,45 @@ export function start_demo(configInput: DemoConfig, launchId = "foreground") {
           }
         : null,
     });
-    if (d.response && config.variant === "wrong-value")
+    const repairFault =
+      config.variant === "repair-after-first" &&
+      Number(
+        db
+          .prepare(
+            "SELECT COUNT(*) AS n FROM deliveries WHERE body IS NOT NULL",
+          )
+          .get()!.n,
+      ) === 0;
+    if (d.response && (config.variant === "wrong-value" || repairFault))
       d.response.values.balance = (
         BigInt(d.response.values.balance!) + 1n
       ).toString();
     if (d.response && config.variant === "missing-proof")
       delete d.response.accountProof;
+    if (d.response && config.variant === "missing-header")
+      delete d.response.header;
+    if (d.response && config.variant === "missing-field")
+      delete d.response.values.balance;
+    if (d.response && config.variant === "corrupt-proof")
+      d.response.accountProof![0] = "0xc0";
+    if (d.response && config.variant === "truncated-proof")
+      d.response.accountProof = d.response.accountProof!.slice(0, 1);
+    if (config.variant === "wrong-request")
+      d.requestHash = "0x" + "11".repeat(32);
+    if (config.variant === "wrong-chain") {
+      d.dataChainId = "10";
+      if (d.response) d.response.dataChainId = "10";
+    }
+    if (config.variant === "expired") {
+      d.issuedAt = String(Number(now) - 60);
+      d.expiresAt = String(Number(now) - 30);
+    }
     d.signature = await signer.signTypedData(delivery_typed_data(d));
+    if (config.variant === "unsigned") delete d.signature;
+    if (d.response && config.variant === "post-sign-tamper")
+      d.response.values.balance = (
+        BigInt(d.response.values.balance!) + 1n
+      ).toString();
     if (config.variant === "bad-signature")
       d.signature = "0x" + "00".repeat(65);
     db.prepare("UPDATE deliveries SET body=? WHERE request_id=?").run(
@@ -170,6 +223,7 @@ export function start_demo(configInput: DemoConfig, launchId = "foreground") {
           version: config.version,
           launchId,
           source,
+          received,
           generated: Number(
             (
               db
@@ -196,6 +250,19 @@ export function start_demo(configInput: DemoConfig, launchId = "foreground") {
         return;
       }
       const task = TaskSpecSchema.parse(await body(req));
+      received++;
+      if (config.variant === "invalid-json") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end('{"deliveryStatus":"delivered","deliveryStatus":"rejected"}');
+        return;
+      }
+      if (config.variant === "oversized-response") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({ testPayload: "x".repeat(2 * 1024 * 1024 + 1) }),
+        );
+        return;
+      }
       if (config.variant === "rate-limit") {
         res.setHeader("retry-after", "1");
         send(res, 429, { error: "TEST_RATE_LIMIT" });

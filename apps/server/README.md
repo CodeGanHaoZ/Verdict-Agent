@@ -19,4 +19,10 @@ npm run server -- --config .local/b-demo/local-two.json
 
 可选 `rpcObservationOrigin` 来自操作者配置，附于 RPC 观测并进入分组，默认不输出。它不改变证据包和数据结论。Windows 可运行根目录 `npm run verify:local` 自动验证实际五进程与工具消费路径。
 
-PI 可选模块：`agent-service.ts` 提供草案、版本确认、执行会话和事件；`pi-runtime.ts` 绑定实际 PI 1.0.4／兼容模型接口；`agent-store.ts` 增量持久化。固定流程和 PI 共用 `engine.ts` 的单次调用／核验／预算／采用。未配置时 PI 明示不可用，固定流程不受影响。命令、接口、测试与真实模型联调状态见 [PI 说明](../../docs/15-PI接入与复验.md)。
+PI 可选模块：`agent-service.ts` 提供直接 PI 执行、任务绑定、执行会话和事件（旧草案 API 仅保留兼容）；`pi-runtime.ts` 绑定实际 PI 1.0.4／兼容模型接口；`agent-store.ts` 增量持久化。固定流程和 PI 共用 `engine.ts` 的单次调用／核验／预算／采用。未配置时 PI 明示不可用，固定流程不受影响。命令、接口、测试与真实模型联调状态见 [PI 说明](../../docs/15-PI接入与复验.md)。
+
+模型超时采用首有效事件／流空闲／单请求总时间三层限制，MODEL_RESPONSE 仅保存计时元数据；180 秒任务预算仍可优先中断。配置与实际复验见 [超时适配](../../docs/18-模型超时适配与复验.md)。
+
+## Guard
+
+直接 PI 任务要求独立 `guard` 配置。外审边界、一次性执行许可、安全报告与规则维护命令见 [实现记录](../../docs/20-Verdict-Guard.md)。固定流程与历史草案接口不受此模块保护。

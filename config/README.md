@@ -15,3 +15,5 @@
 可选 `rpcObservationOrigin` 指定 `{observerId,region,networkProfile,provenance:'OPERATOR_CONFIGURED'}`，region／networkProfile 可为 null。只标记本机 RPC 观测来源；不从 Agent 请求接受，不认证地理位置，不进入签名证据。未配置时省略；标签不能包含 URL、空格或其他秘密。部署者应填写真实已知信息，未知就留 null；示例与分组含义见 [出海场景](../docs/16-Agent工具与出海验收.md)。
 
 可选 `agent` 配置由 `npm run pi:configure` 生成，包括 baseURL、modelId、apiKeyEnv、调用上限与复验目标。只写环境变量名，真实密钥由服务器进程环境提供。默认初始化仍不自动配置模型。配置字段及真实联调命令见 [PI 说明](../docs/15-PI接入与复验.md)。
+
+PI 默认 requestTimeoutMs=90000、firstEventTimeoutMs=60000、streamIdleTimeoutMs=15000；GLM 配置脚本默认 maxInputChars=64000。三项请求限制叠加，并受任务总预算取消控制。显式旧值保留，更新方式见 [超时适配](../docs/18-模型超时适配与复验.md)。
