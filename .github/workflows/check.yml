@@ -6,7 +6,10 @@ permissions:
   contents: read
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -17,10 +20,13 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm run test:all
+      - name: Portable process and Agent tool demo
+        run: npm run verify:local
       - name: Independent process demo
+        if: runner.os == 'Linux'
         run: npm run dev:init && npm run dev:start && npm run verify:b
       - run: npx playwright install --with-deps chromium
       - name: Browser integration
         run: npm run test:e2e
-      - if: always()
+      - if: always() && runner.os == 'Linux'
         run: npm run dev:stop

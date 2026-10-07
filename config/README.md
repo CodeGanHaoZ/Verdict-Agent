@@ -12,4 +12,6 @@
 
 完整 schema 见 `apps/server/src/config.ts` 与 `services/demo/src/index.ts`；JSON 实例由 `scripts/dev/setup.mjs` 生成，所以无私钥静态模板不会误导为可直接运行的密钥配置。Node SQLite 在固定 Node 22 版本中仍有 experimental 提示。
 
+可选 `rpcObservationOrigin` 指定 `{observerId,region,networkProfile,provenance:'OPERATOR_CONFIGURED'}`，region／networkProfile 可为 null。只标记本机 RPC 观测来源；不从 Agent 请求接受，不认证地理位置，不进入签名证据。未配置时省略；标签不能包含 URL、空格或其他秘密。部署者应填写真实已知信息，未知就留 null；示例与分组含义见 [出海场景](../docs/16-Agent工具与出海验收.md)。
+
 可选 `agent` 配置由 `npm run pi:configure` 生成，包括 baseURL、modelId、apiKeyEnv、调用上限与复验目标。只写环境变量名，真实密钥由服务器进程环境提供。默认初始化仍不自动配置模型。配置字段及真实联调命令见 [PI 说明](../docs/15-PI接入与复验.md)。

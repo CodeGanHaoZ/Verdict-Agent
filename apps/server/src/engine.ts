@@ -769,6 +769,7 @@ export class Engine {
         });
       for (const probe of probes) {
         const item = await probe_rpc({
+          origin: this.config.rpcObservationOrigin,
           serviceId: service.serviceId,
           endpoint: service.endpoint,
           timeoutMs: service.timeoutMs,

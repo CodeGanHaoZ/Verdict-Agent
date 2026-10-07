@@ -22,3 +22,7 @@ npm run server -- --config .local/b-demo/local-two.json
 ```
 
 Ctrl-C 停止前台进程。不要同时用前台命令和统一脚本占同一实例／端口。CLI 初始化不会自动下载 RPC 数据或进行链上交易。进程控制脚本仅验证 Linux；其他平台可用五个前台入口分别启动。
+
+跨平台一次验收：`npm run verify:local`（已在 Windows 实测）。`verify-local.mjs` 在新 `.local/verify-local-*` 目录生成配置／密钥，以端口 0 启动实际五个进程并校验 launchId；先跑 B 验收，再跑 Agent 全工具路径。只持有、结束自己的子进程句柄，不依赖 PID 文件和 `/proc`；在 finally 中清理，保留证据。该命令不会运行公共 RPC 探测或链上发布，也不使用现有 `.local/b-demo` 私人配置。
+
+setup.mjs 的可选首参数可指定 `.local` 内的隔离输出目录，默认路径不变，已有文件保留。verify.mjs 的第三个参数可指定运行摘要文件，默认仍是 `.local/b-demo/verification.json`。不要同时让多个进程写同一数据库。

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   parse_json_strict,
   type Observation,
+  type ObservationOrigin,
   type MetricGroup,
   type VerificationResult,
 } from "@verdict/protocol";
@@ -114,6 +115,7 @@ export async function probe_rpc(input: {
   block?: string;
   account?: string;
   timeoutMs: number;
+  origin?: ObservationOrigin | null;
 }): Promise<Observation> {
   const item = observation(
     input.serviceId,
@@ -123,6 +125,7 @@ export async function probe_rpc(input: {
     input.account ?? null,
   );
   const start = performance.now();
+  if (input.origin) item.origin = input.origin;
   try {
     const { data, httpStatus } = await fetch_json(input.endpoint, {
       body: {
@@ -233,7 +236,8 @@ export function summarize(
   for (const o of observations.filter(
     (o) => o.recordedAt >= start && o.recordedAt <= end,
   )) {
-    const key = JSON.stringify([o.source, o.method, o.requestedBlock]);
+    const key = JSON.stringify([o.source, o.method, o.requestedBlock,
+      o.origin?.observerId ?? null, o.origin?.region ?? null, o.origin?.networkProfile ?? null]);
     groups.set(key, [...(groups.get(key) ?? []), o]);
   }
   return [...groups.values()].map((rows) => {
@@ -250,6 +254,7 @@ export function summarize(
         counts[v.verdict]++;
     return {
       source: first.source,
+      ...(first.origin ? { origin: first.origin } : {}),
       method: first.method,
       requestedBlock: first.requestedBlock,
       windowStart: start,

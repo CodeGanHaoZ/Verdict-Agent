@@ -14,6 +14,7 @@ import { Engine } from "./engine.js";
 import { AgentService } from "./agent-service.js";
 import { ApiError } from "./store.js";
 import { type ServerConfig } from "./config.js";
+import { call_tool, describe_environment, tool_catalog } from "./tools.js";
 export { Engine, reports_consistent } from "./engine.js";
 export {
   load_server_config,
@@ -132,20 +133,15 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
         return;
       }
       if (req.method === "GET" && path === "/api/meta") {
-        send(res, 200, {
-          apiVersion: API_VERSION,
-          instanceId: config.instanceId,
-          publicationAdapter: config.publicationAdapter,
-          contexts: config.contexts.map((c) => ({
-            contextId: c.contextId,
-            ruleVersion: c.ruleVersion,
-            policy: c.policy,
-            trustedBlock: c.trustedBlock,
-          })),
-          capabilities: config.services
-            .filter((s) => s.transport === "signed-http")
-            .map((s) => ({ serviceId: s.serviceId, ...s.capabilities })),
-        });
+        send(res, 200, describe_environment(engine));
+        return;
+      }
+      if (req.method === "GET" && path === "/api/tools") {
+        send(res, 200, { apiVersion: API_VERSION, tools: tool_catalog });
+        return;
+      }
+      if (req.method === "POST" && path === "/api/tools/call") {
+        send(res, 200, { apiVersion: API_VERSION, result: await call_tool(engine, await body(req)) });
         return;
       }
       if (req.method === "GET" && path === "/api/services") {

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { digest } from "@verdict/core";
 
 test("real signed faults → fallback PASS → original evidence download → independent replay and ranking", async ({
@@ -141,9 +142,18 @@ test("mobile layout, unavailable backend and dev-server private-file boundary", 
   await expect(page.getByRole("alert")).toContainText("无法连接");
   await page.getByRole("button", { name: "任务验收" }).click();
   await expect(page.getByRole("button", { name: "开始验收" })).toBeDisabled();
-  const path = process.cwd() + "/.local/b-demo/local-one.json";
-  const blocked = await request.get("/@fs/" + path);
-  expect(blocked.status()).toBe(403);
+  // Use an existing, harmless private fixture; do not depend on a user's dev:init.
+  const local = resolve(".local");
+  mkdirSync(local, { recursive: true });
+  const directory = mkdtempSync(join(local, "web-private-"));
+  try {
+    const path = join(directory, "sentinel.json");
+    writeFileSync(path, JSON.stringify({ privateFixture: true }));
+    const blocked = await request.get("/@fs/" + path.replaceAll("\\", "/"));
+    expect(blocked.status()).toBe(403);
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
 });
 
 test("new submission clears previous accepted values and interrupted polling resumes without a new run", async ({

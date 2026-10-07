@@ -129,6 +129,12 @@ export type ReplayResult = z.infer<typeof ReplayResultSchema>;
 export const API_VERSION = '1.0.0';
 export const ObservationStatusSchema = z.enum(['OK', 'UNSUPPORTED', 'RATE_LIMITED', 'TIMEOUT', 'ERROR', 'INVALID_RESPONSE']);
 export const CapabilityStatusSchema = z.enum(['SUPPORTED', 'UNSUPPORTED', 'UNKNOWN']);
+// Operator-declared vantage point, not geolocation attestation or evidence of data correctness.
+const ObservationLabel = z.string().regex(/^[A-Za-z0-9_.-]{1,80}$/);
+export const ObservationOriginSchema = z.strictObject({
+  observerId: ObservationLabel, region: ObservationLabel.nullable(),
+  networkProfile: ObservationLabel.nullable(), provenance: z.literal('OPERATOR_CONFIGURED'),
+});
 export const RuntimeReasonSchema = z.enum([...ReasonCodeSchema.options, 'NETWORK_ERROR', 'INVALID_RESPONSE', 'SERVICE_ID_MISMATCH', 'COST_UNKNOWN', 'INTERRUPTED', 'INTERNAL_ERROR', 'CONTEXT_UNAVAILABLE', 'AGENT_STOPPED', 'AGENT_ERROR', 'CANCELLED']);
 export const CapabilitiesSchema = z.strictObject({
   dataChainIds: z.array(DecimalSchema).nullable(), blockHashes: z.array(HashSchema).nullable(),
@@ -142,9 +148,11 @@ export const ObservationSchema = z.strictObject({
   latencyMs: z.number().nonnegative(), httpStatus: z.number().int().nullable(), rpcCode: z.number().int().nullable(),
   response: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
   correctness: z.literal('NOT_CHECKED'),
+  origin: ObservationOriginSchema.nullable().optional(),
 });
 export const MetricGroupSchema = z.strictObject({
   source: ProvenanceModeSchema, method: z.string(), requestedBlock: z.string().nullable(),
+  origin: ObservationOriginSchema.nullable().optional(),
   windowStart: z.string().datetime(), windowEnd: z.string().datetime(), sampleCount: z.number().int(),
   responses: z.number().int(), errors: z.number().int(), unsupported: z.number().int(),
   rateLimited: z.number().int(), timeouts: z.number().int(), medianLatencyMs: z.number().nullable(),
@@ -197,6 +205,30 @@ export type CreateRun = z.infer<typeof CreateRunSchema>;
 export type ReplaySnapshot = z.infer<typeof ReplaySnapshotSchema>;
 export type Publication = z.infer<typeof PublicationSchema>;
 export type RuntimeReason = z.infer<typeof RuntimeReasonSchema>;
+
+// Host-neutral function tools. The descriptions are local code, never service metadata.
+export const AgentToolArguments = {
+  describe_environment: z.strictObject({}),
+  find_service: CreateRunSchema,
+  verify_before_use: CreateRunSchema,
+  get_run: z.strictObject({ runId: Id }),
+  download_evidence: z.strictObject({ evidenceId: HashSchema }),
+  report_outcome: ImportEvidenceSchema,
+  replay_evidence: CreateReplaySchema,
+  get_replay: z.strictObject({ replayId: Id }),
+};
+export const AgentToolCallSchema = z.discriminatedUnion('name', [
+  z.strictObject({ name: z.literal('describe_environment'), arguments: AgentToolArguments.describe_environment }),
+  z.strictObject({ name: z.literal('find_service'), arguments: AgentToolArguments.find_service }),
+  z.strictObject({ name: z.literal('verify_before_use'), arguments: AgentToolArguments.verify_before_use }),
+  z.strictObject({ name: z.literal('get_run'), arguments: AgentToolArguments.get_run }),
+  z.strictObject({ name: z.literal('download_evidence'), arguments: AgentToolArguments.download_evidence }),
+  z.strictObject({ name: z.literal('report_outcome'), arguments: AgentToolArguments.report_outcome }),
+  z.strictObject({ name: z.literal('replay_evidence'), arguments: AgentToolArguments.replay_evidence }),
+  z.strictObject({ name: z.literal('get_replay'), arguments: AgentToolArguments.get_replay }),
+]);
+export type AgentToolCall = z.input<typeof AgentToolCallSchema>;
+export type ObservationOrigin = z.infer<typeof ObservationOriginSchema>;
 
 // PI orchestration is mutable application state, never part of the signed evidence schema.
 export const AgentErrorSchema = z.enum(['MODEL_NOT_CONFIGURED','MODEL_ERROR','MODEL_RATE_LIMITED','MODEL_TIMEOUT','MODEL_LIMIT','TOOL_LIMIT','TOOL_INVALID','NO_VERIFIED_RESULT','CANCELLED','INTERRUPTED','DRAFT_INVALID','DRAFT_EXPIRED','BUDGET_EXHAUSTED','INTERNAL_ERROR']);

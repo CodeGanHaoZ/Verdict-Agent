@@ -35,6 +35,8 @@
     "example:b": "node examples/consumer/dist/main.js",
     "observe:b": "node --use-env-proxy scripts/dev/observe.mjs",
     "verify:b": "node scripts/dev/verify.mjs",
+    "example:tools": "node examples/consumer/dist/tools-main.js",
+    "verify:local": "npm run build && node scripts/dev/verify-local.mjs",
     "web": "npm run dev --workspace @verdict/web",
     "web:preview": "npm run preview --workspace @verdict/web",
     "test:e2e": "npm run build && playwright test",

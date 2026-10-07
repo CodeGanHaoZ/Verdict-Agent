@@ -12,7 +12,7 @@ import {
   ServerConfigSchema,
   type ServerConfig,
 } from "@verdict/server";
-import { api, consume } from "@verdict/consumer";
+import { api, consume, call_tool, guard, AcceptanceStopped } from "@verdict/consumer";
 import { digest } from "@verdict/core";
 import { probe_rpc, summarize } from "@verdict/observations";
 import {
@@ -21,6 +21,8 @@ import {
   CandidateSchema,
   RunSnapshotSchema,
   ReplaySnapshotSchema,
+  ObservationSchema,
+  MetricGroupSchema,
   type Candidate,
   type CreateRun,
   type EvidenceBundle,
@@ -225,6 +227,83 @@ test("all-fail stops dependency and never exposes accepted data", async () => {
   assert.equal(run.status, "STOPPED");
   assert.equal(run.stopReason, "NO_ACCEPTABLE_DELIVERY");
   assert.equal(run.accepted, null);
+});
+
+test("Agent tools expose generated schemas and fail closed through actual signed fallback", async () => {
+  const catalog = await api(base, "/api/tools");
+  assert.equal(catalog.tools.length, 8);
+  const verify = catalog.tools.find((t: any) => t.name === "verify_before_use");
+  assert.equal(verify.inputSchema.additionalProperties, false);
+  assert.equal(verify.inputSchema.properties.task.additionalProperties, false);
+  assert.deepEqual(await call_tool(base, { name: "describe_environment", arguments: {} }), await api(base, "/api/meta"));
+  const request = input(["demo-wrong-block", "demo-wrong-value", "demo-valid"]);
+  const selection = await call_tool(base, { name: "find_service", arguments: request });
+  assert.equal(selection.candidates.length, 3);
+  const created = await call_tool(base, { name: "verify_before_use", arguments: request });
+  const accepted = await guard(base, request);
+  assert.equal(accepted.serviceId, "demo-valid");
+  const run = RunSnapshotSchema.parse(await call_tool(base, { name: "get_run", arguments: { runId: created.runId } }));
+  assert.equal(run.status, "SUCCEEDED");
+  assert.deepEqual(run.attempts.map((a) => a.verification?.verdict), ["FAIL", "FAIL", "PASS"]);
+  assert.equal(accepted.evidenceId, run.accepted?.evidenceId);
+  const again = await call_tool(base, { name: "verify_before_use", arguments: request });
+  assert.equal(again.runId, created.runId);
+  assert.equal(again.duplicate, true);
+  await assert.rejects(guard(base, input(["demo-wrong-value"])), (e: unknown) => {
+    assert(e instanceof AcceptanceStopped);
+    assert.equal(e.run.accepted, null);
+    assert.equal(e.run.status, "STOPPED");
+    return true;
+  });
+});
+
+test("Agent evidence tools reverify in second instance and reject forged reports", async () => {
+  const replayServer = start_server({ ...config, instanceId: "tool-import", dataDir: resolve(directory, "tool-import") });
+  const target = `http://127.0.0.1:${await replayServer.ready}`;
+  try {
+  const run = await consume(base, input(["demo-wrong-value"]));
+  const evidenceId = run.attempts[0].evidenceId!;
+  const downloaded = await call_tool(base, { name: "download_evidence", arguments: { evidenceId } });
+  assert.equal(digest(downloaded.bundle), evidenceId);
+  const contextId = "mainnet-demo";
+  const imported = await call_tool(target, { name: "report_outcome", arguments: { ...downloaded, contextId } });
+  assert.equal(imported.result.recomputedResult.verdict, "FAIL");
+  const { replayId } = await call_tool(target, { name: "replay_evidence", arguments: { evidenceId, contextId } });
+  await waitReplay(replayId, target);
+  const replay = ReplaySnapshotSchema.parse(await call_tool(target, { name: "get_replay", arguments: { replayId } }));
+  assert.equal(replay.status, "COMPLETED");
+  assert.equal(replay.reportConsistent, true);
+  assert.equal(replay.result?.recomputedResult?.verdict, "FAIL");
+  const forged = structuredClone(downloaded);
+  forged.bundle.result.verdict = "PASS";
+  forged.manifest.evidenceHash = digest(forged.bundle);
+  assert.equal((await post("/api/tools/call", {
+    name: "report_outcome", arguments: { ...forged, contextId },
+  }, target)).status, 422);
+  } finally {
+    await replayServer.close();
+  }
+});
+
+test("Agent calls reject model-supplied trust, targets, verdicts and arbitrary tool names", async () => {
+  for (const extra of [ { endpoint: "https://example.invalid" }, { verdict: "PASS" }, { trustedBlock: snapshot.header } ]) {
+    assert.equal((await post("/api/tools/call", { name: "verify_before_use", arguments: { ...input(), ...extra } })).status, 400);
+  }
+  for (const call of [
+    { name: "publish", arguments: {} },
+    { name: "verify_before_use", arguments: { ...input(), contextId: "untrusted" } },
+    { name: "download_evidence", arguments: { evidenceId: "../../private.key" } },
+    { name: "get_run", arguments: { runId: "missing" }, verdict: "PASS" },
+  ]) assert.equal((await post("/api/tools/call", call)).status, 400);
+  assert.equal((await post("/api/tools/call", { name: "get_run", arguments: { runId: "missing" } })).status, 404);
+  assert.equal((await fetch(base + "/api/tools/call", {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://evil.invalid" },
+    body: JSON.stringify({ name: "describe_environment", arguments: {} }),
+  })).status, 403);
+  assert.equal((await fetch(base + "/api/tools/call", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: '{"name":"describe_environment","name":"publish","arguments":{}}',
+  })).status, 400);
 });
 
 test("missing proof is UNVERIFIABLE and preserves attribution; unsigned/bad signature is not a provider counterexample", async () => {
@@ -735,6 +814,51 @@ test("controlled RPC probe distinguishes unsupported method, pruned range, rate 
     }
   } finally {
     await new Promise<void>((r) => server.close(() => r()));
+  }
+});
+
+test("operator-configured RPC origin survives storage and metrics keep regions and networks separate", async () => {
+  const rpc = createServer((_req, res) => {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1" }));
+  });
+  await new Promise<void>((r) => rpc.listen(0, "127.0.0.1", r));
+  const origin = { observerId: "test-runner", region: "HK", networkProfile: "fixture-direct", provenance: "OPERATOR_CONFIGURED" as const };
+  const observer = start_server(ServerConfigSchema.parse({
+    ...config, instanceId: "origin-test", dataDir: resolve(directory, "origin-test"), rpcObservationOrigin: origin,
+    services: [config.services[2], { ...config.services[0], serviceId: "controlled-rpc", source: "LIVE", transport: "rpc-observation",
+      endpoint: `http://127.0.0.1:${(rpc.address() as { port: number }).port}`, timeoutMs: 2000 }],
+  }));
+  try {
+    const target = `http://127.0.0.1:${await observer.ready}`;
+    assert.equal((await post("/api/observations", { origin: { ...origin, region: "US" } }, target)).status, 400);
+    const result = await post("/api/observations", {}, target);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.observations.length, 6);
+    const stored = await api(target, "/api/observations");
+    for (const raw of stored.observations) {
+      const row = ObservationSchema.parse(raw);
+      assert.deepEqual(row.origin, origin);
+      assert.equal(row.correctness, "NOT_CHECKED");
+    }
+    const row = ObservationSchema.parse(stored.observations.find((r: any) => r.method === "eth_chainId"));
+    assert.equal(row.status, "OK");
+    const legacy = { ...row }; delete legacy.origin;
+    ObservationSchema.parse(legacy);
+    const groups = summarize([
+      row, { ...row, origin: { ...origin, region: "US" } },
+      { ...row, origin: { ...origin, networkProfile: "fixture-proxy" } },
+      { ...row, origin: { ...origin, observerId: "another-runner" } }, legacy,
+    ], []);
+    assert.equal(groups.length, 5);
+    for (const group of groups) {
+      MetricGroupSchema.parse(group);
+      assert.equal(group.sampleCount, 1);
+      assert.deepEqual(group.verdictCounts, { PASS: 0, FAIL: 0, UNVERIFIABLE: 0 });
+    }
+  } finally {
+    await observer.close();
+    await new Promise<void>((r) => rpc.close(() => r()));
   }
 });
 
