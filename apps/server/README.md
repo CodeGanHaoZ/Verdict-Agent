@@ -14,3 +14,5 @@ npm run server -- --config .local/b-demo/local-two.json
 `publishForTest(evidenceId, retryOf?)` 是受信代码调用的队列故障测试边界：原子登记 attemptId、pending、failed；显式 retryOf 必须匹配上一失败尝试，重复重试不重复消费。无适配器时保持 not_requested。未接 C adapter、没有链上确认。
 
 测试：`npm run test:b`；全流程与 API 见 [B 实现与复验](../../docs/13-B包实现与复验.md)。当前面向本地联调，未实现公众多租户认证、分页归档或跨机器分布式队列。
+
+PI 可选模块：`agent-service.ts` 提供草案、版本确认、执行会话和事件；`pi-runtime.ts` 绑定实际 PI 1.0.4／兼容模型接口；`agent-store.ts` 增量持久化。固定流程和 PI 共用 `engine.ts` 的单次调用／核验／预算／采用。未配置时 PI 明示不可用，固定流程不受影响。命令、接口、测试与真实模型联调状态见 [PI 说明](../../docs/15-PI接入与复验.md)。

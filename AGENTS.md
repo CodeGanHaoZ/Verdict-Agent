@@ -13,7 +13,7 @@
 1. 检查当前目录、Git remote、分支和工作区改动；保留其他人未提交的工作，勿默认重置或清理。
 2. 阅读本文件、目标目录下的 `AGENTS.md`、对应工作包和 [开发启动清单](docs/10-开发启动清单.md)。从根目录工作时也主动读取将要修改的子目录规则。
 3. 涉及产品范围看 [PRD](docs/02-PRD.md)，涉及共享字段看 [接口约定](docs/08-接口约定.md)，涉及依赖或放置位置看 [工程结构](docs/09-工程结构.md)。新决定记录在 `docs/decisions/`，历史决定保留并标明替代关系。
-4. 先落实用户指定的工作包；没有指定时先读 README 的接力与未完成清单。A 包与 B 后端闭环已经完成本地验证，不重复初始化或改写内核；C 的简易网页也已接入真实 API，见 docs/14-简易前端.md。当前剩余为真实存证适配、合约和完整演示，A/B 支持接线和补测。
+4. 先落实用户指定的工作包；没有指定时先读 README 的接力与未完成清单。A 包与 B 后端闭环已经完成本地验证，不重复初始化或改写内核；C 的简易网页也已接入真实 API，见 docs/14-简易前端.md。用户后续已要求 PI 接管业务编排，见 docs/decisions/007-pi-orchestration.md；自然语言草案需显式确认，模型无法更改验收规则。当前真实模型联调需用户配置，真实存证适配／合约仍未实现。
 
 ## 三人职责与文件所有权
 
@@ -52,7 +52,7 @@
 - 沿用 TypeScript 分层方向。本次 A 包按用户“必要基础配置”授权已固定运行时、npm workspace 和锁文件；后续由 B 统一协调根工程。A 使用已验证的证明、签名与规范化库，不自行发明密码学算法。
 - 修改行为时运行对应模块的真实检查。核验逻辑必须有正常、错块、错值、错误签名、缺材料等有意义的用例；跨模块变动运行有关集成路径。
 - 单元测试就近放置；跨模块用 `tests/integration/`，用户路径用 `tests/e2e/`。不为纯文档或可逆小改动建立额外测试工程，不用只复述实现的断言冒充验证。
-- 只运行实际存在的脚本。A 包已具备 Node 22.23.3 / npm 10.9.9 工程，根目录可执行 `npm ci --ignore-scripts`、`npm run typecheck`、`npm test`、`npm run demo:a` 和 `npm run verify`，见 docs/11-A包实现与复验.md；B 已有 `dev:init`、`dev:start`、`dev:stop`、`test:b`、`test:all`、`verify:b`、`observe:b` 和 `example:b`，见 docs/13-B包实现与复验.md；简易网页可用 `npm run web` 启动，`npm run test:e2e` 验证；不能冒称真实存证或模型已接入。新增命令时同步模块 README 和根 README，写明需要哪些依赖及已验证的结果。
+- 只运行实际存在的脚本。A 包已具备 Node 22.23.3 / npm 10.9.9 工程，根目录可执行 `npm ci --ignore-scripts`、`npm run typecheck`、`npm test`、`npm run demo:a` 和 `npm run verify`，见 docs/11-A包实现与复验.md；B 已有 `dev:init`、`dev:start`、`dev:stop`、`test:b`、`test:all`、`verify:b`、`observe:b` 和 `example:b`，见 docs/13-B包实现与复验.md；简易网页可用 `npm run web` 启动，`npm run test:e2e` 验证；PI 代码及测试传输已接入，真实模型联调状态以 docs/15-PI接入与复验.md 为准；不能用 TEST_TRANSPORT 冒充真实模型通过或宣称真实存证完成。新增命令时同步模块 README 和根 README，写明需要哪些依赖及已验证的结果。
 - 首次真链路尽早接通：真实样本 → 签名交付 → 确定性验收 → 错误拒收 → 替换成功。之后导出、第二实例复验、页面和本地存证。至少预留最后 6 小时联调与交付，实际时间由当前计划记录，不沿用旧的“剩余 38 小时”。
 
 ## 数据、提交与完成说明

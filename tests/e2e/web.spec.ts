@@ -165,3 +165,73 @@ test("new submission clears previous accepted values and interrupted polling res
   await expect(page.getByText("已停止数据依赖")).toBeVisible();
   await expect(page.locator("#task-fields")).toBeEnabled();
 });
+
+test("PI natural-language draft requires confirmation, then real tools fallback to PASS with separate model status", async ({
+  page,
+  request,
+}) => {
+  const meta = await (
+    await request.get("http://127.0.0.1:3101/api/meta")
+  ).json();
+  await page.goto("/");
+  await expect(page.getByText("browser-one 已连接")).toBeVisible();
+  await page.getByRole("button", { name: "PI Agent · 自然语言" }).click();
+  await page
+    .locator("#pi-prompt")
+    .fill(
+      `核验 ${meta.capabilities[0].accounts[0]} 在固定检查点 ${meta.contexts[0].trustedBlock.blockHash} 的账户状态。`,
+    );
+  await page.getByRole("button", { name: "生成任务草案" }).click();
+  await expect(
+    page.getByRole("heading", { name: "任务草案 · 版本 1" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "确认此版本并执行" }),
+  ).toBeEnabled();
+  await expect(page.locator(".accepted")).toHaveCount(0);
+  await page.getByRole("button", { name: "确认此版本并执行" }).click();
+  await expect(page.getByText("数据已通过本次验收")).toBeVisible();
+  await expect(page.locator("#pi-progress")).toContainText("COMPLETED");
+  await expect(page.locator("#pi-progress")).toContainText("TEST_TRANSPORT");
+  await expect(page.locator(".attempt")).toHaveCount(3);
+  await expect(page.locator("#pi-progress")).toContainText(
+    "request_verified_state",
+  );
+  await expect(page.locator("#pi-progress")).toContainText("模型费用 未知");
+  await page.reload();
+  await expect(page.getByText("数据已通过本次验收")).toBeVisible();
+  await expect(page.locator("#pi-progress")).toContainText("COMPLETED");
+});
+
+test("PI latest/ambiguous request stays unconfirmed until user supplies and saves explicit conditions", async ({
+  page,
+  request,
+}) => {
+  const meta = await (
+    await request.get("http://127.0.0.1:3101/api/meta")
+  ).json();
+  await page.goto("/");
+  await page.getByRole("button", { name: "PI Agent · 自然语言" }).click();
+  await expect(
+    page.getByRole("button", { name: "生成任务草案" }),
+  ).toBeEnabled();
+  await page.locator("#pi-prompt").fill("帮我检查最新账户状态");
+  await page.getByRole("button", { name: "生成任务草案" }).click();
+  await expect(page.locator(".pi-missing")).toContainText(
+    "不能将最新状态自动替换",
+  );
+  await expect(
+    page.getByRole("button", { name: "确认此版本并执行" }),
+  ).toBeDisabled();
+  await page.locator("#pi-account").fill(meta.capabilities[0].accounts[0]);
+  await page
+    .getByRole("button", { name: "明确选用此配置的固定检查点" })
+    .click();
+  await page.getByRole("button", { name: "保存条件修改" }).click();
+  await expect(
+    page.getByRole("heading", { name: "任务草案 · 版本 2" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "确认此版本并执行" }),
+  ).toBeEnabled();
+});

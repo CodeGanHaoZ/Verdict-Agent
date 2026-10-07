@@ -35,6 +35,7 @@ import {
   empty,
 } from "./view";
 import "./style.css";
+import { mountAgentUI } from "./agent-ui";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector)!;
@@ -82,7 +83,7 @@ $("#app").innerHTML =
 <section id="view-task" class="view"><div class="task-layout"><section class="panel task-panel"><div class="panel-heading"><h2>验收条件</h2><span class="step">01 / REQUEST</span></div><form id="task-form"><fieldset id="task-fields" disabled><label>可信配置<select id="context" name="context" required></select></label><label>账户地址<input id="account" name="account" spellcheck="false" required pattern="0x[0-9a-f]{40}" placeholder="0x…"></label><label>目标区块哈希<input id="block" name="block" class="mono" spellcheck="false" required pattern="0x[0-9a-f]{64}" placeholder="0x…"></label><p class="hint">使用后端配置的检查点。输入其他区块不会自动改变信任基准。</p><label>调用方案<select id="scenario"><option value="fallback">自动替换 · 三个演示服务</option><option value="success">仅正常服务</option><option value="all-fail">全部失败 · 两个故障服务</option><option value="custom">自选候选</option></select></label><div id="candidate-options" hidden></div><div class="field-label">验收字段</div><div class="field-options">${["balance", "nonce", "codeHash", "storageRoot"].map((f) => `<label><input type="checkbox" name="field" value="${f}" checked>${f}</label>`).join("")}</div><label class="toggle"><input id="history" type="checkbox"><span>使用适用的历史反证<small>影响顺序，每次新交付仍需核验</small></span></label><details class="budget"><summary>次数、时间与成本预算</summary><div class="budget-grid"><label>最多尝试<input id="max-attempts" type="number" min="1" max="100" value="3" required></label><label>超时（毫秒）<input id="timeout" type="number" min="1" max="600000" value="15000" required></label><label class="wide">最高成本（wei）<input id="cost" inputmode="numeric" pattern="(0|[1-9][0-9]*)" value="0" required></label></div></details><button class="primary-button" id="submit" type="submit">开始验收 <span>→</span></button><button class="text-button" id="preview-selection" type="button">查看候选顺序</button></fieldset></form><button id="retry-submit" class="primary-button" hidden>重试同一请求</button><p class="footnote">演示交付使用真实冻结证明；错块与错值在签名前注入，签名不属于 RPC 厂商。</p><div id="selection-preview"></div></section><section class="panel audit-panel"><div class="panel-heading"><h2>交付与验收</h2><span class="step">02 / AUDIT</span></div><div id="audit" aria-live="polite">${empty("等待第一笔任务", "设置账户与区块后开始验收。调用、拒收、替换与采用，都将在这里留下记录。")}<div class="flow"><span>获取交付</span><i>→</i><span>核验依据</span><i>→</i><span>采用或停止</span></div></div></section></div></section>
 <section id="view-services" class="view" hidden><div class="section-toolbar"><p>声明能力与实测结果分开展示。RPC 仅作观测，不冒充签名服务。</p><button id="observe" class="secondary-button">采集实时 RPC 观测 ↗</button></div><div id="services-list" class="services-grid"></div></section>
 <section id="view-evidence" class="view" hidden><div class="evidence-layout"><section class="panel evidence-list-panel"><div class="panel-heading"><h2>证据记录</h2><button id="refresh-evidence" class="text-button">刷新</button></div><div id="evidence-list"></div></section><section class="panel evidence-detail-panel"><div class="panel-heading"><h2>独立复验</h2><span class="step">03 / REPLAY</span></div><div id="evidence-detail">${empty("选择一份证据", "下载原始材料，或让第二实例重新计算签名、账户证明与请求条件。")}</div></section></div></section>
-<footer class="main-footer"><span>Verdict Agent <b>·</b> 证据先于结论</span><span>模型 / PI 未接入 <b>·</b> 链上存证未接入</span></footer></main></div>`;
+<footer class="main-footer"><span>Verdict Agent <b>·</b> 证据先于结论</span><span>PI Agent · 显式配置 <b>·</b> 链上存证未接入</span></footer></main></div>`;
 
 function notice(message = "") {
   $("#notice").hidden = !message;
@@ -322,7 +323,12 @@ async function connect() {
     $("#connection-status").innerHTML =
       `<span class="dot"></span>${e(meta.instanceId)} 已连接`;
     setBusy(busy);
-    if (lastRunId && !pending) await pollRun(lastRunId);
+    let piSelected = false;
+    try {
+      piSelected =
+        sessionStorage.getItem("verdict-execution-mode:" + primary) === "pi";
+    } catch {}
+    if (lastRunId && !pending && !piSelected) await pollRun(lastRunId);
   } catch (error) {
     meta = null;
     setBusy(false);
@@ -518,3 +524,20 @@ $("#task-form").addEventListener("change", () => {
 window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 showView(location.hash.slice(1) || "task");
 void connect();
+
+mountAgentUI(
+  (snapshot) => {
+    run = snapshot;
+    renderAudit();
+  },
+  (message?: string) => {
+    run = null;
+    $("#run-status").textContent = message ? "未开始" : "PI 执行中";
+    $("#run-caption").textContent = "尚无本次采用结果";
+    $("#audit").innerHTML = message
+      ? `<div class="working">${e(message)}</div>`
+      : '<div class="working"><span class="spinner"></span> PI 正在选择候选，尚无被采用数据。</div>';
+  },
+  refreshData,
+  () => !busy && !polling && !unresolvedRun,
+);
