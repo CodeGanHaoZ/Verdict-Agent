@@ -1,10 +1,14 @@
-import { loadDataset } from "./agent-dataset.mjs";
+import { loadDataset, loadBlindCases } from "./agent-dataset.mjs";
 const { manifest, cases, caseHash } = loadDataset();
+const blind = loadBlindCases();
 console.log(
   JSON.stringify(
     {
       datasetVersion: manifest.datasetVersion,
-      cases: cases.length,
+      cases: cases.length + blind.cases.length,
+      originalCases: cases.length,
+      blindCases: blind.cases.length,
+      blindCaseHash: blind.caseHash,
       smokeCases: cases.filter((c) => c.suite === "smoke").length,
       snapshotFiles: manifest.sources.length,
       accountBlockPairs: manifest.sources.reduce(

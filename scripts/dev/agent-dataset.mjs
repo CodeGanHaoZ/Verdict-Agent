@@ -94,6 +94,70 @@ export function loadDataset(root = process.cwd()) {
   }
   return { manifest, cases, fixture, caseHash: hash(bytes) };
 }
+export function loadBlindCases(root = process.cwd()) {
+  const { manifest } = loadDataset(root);
+  const bytes = readFileSync(
+    resolve(root, "fixtures/agent", manifest.blindCaseFile),
+  );
+  assert.equal(
+    hash(bytes),
+    manifest.blindCaseFileSha256,
+    "Blind cases hash mismatch",
+  );
+  const cases = z
+    .array(
+      z.strictObject({
+        id,
+        title: z.string(),
+        category: z.enum(["delivery", "transport", "selection", "history"]),
+        sourceRefs: z.array(z.string()).min(1),
+        profile: z.enum([
+          "wrong-account",
+          "wrong-request",
+          "wrong-chain",
+          "expired",
+          "unsigned",
+          "bad-signature",
+          "missing-proof",
+          "missing-header",
+          "missing-field",
+          "corrupt-proof",
+          "truncated-proof",
+          "post-sign-tamper",
+          "rate-limit",
+          "timeout",
+          "invalid-json",
+          "oversized-response",
+          "unknown-cost",
+          "unsupported-block",
+          "repaired-service",
+          "evidence-injection",
+        ]),
+        fallback: z.boolean(),
+        expected: z.strictObject({
+          verdict: z.enum(["PASS", "FAIL", "UNVERIFIABLE"]).nullable(),
+          reason: z.string().nullable(),
+          runStatus: z.enum(["SUCCEEDED", "STOPPED"]),
+        }),
+        seeds: z.array(z.number().int().nonnegative()).min(1),
+      }),
+    )
+    .parse(JSON.parse(bytes));
+  assert.equal(new Set(cases.map((c) => c.id)).size, cases.length);
+  const refs = readFileSync(
+    resolve(root, "fixtures/agent", manifest.sourceReferenceFile),
+  );
+  assert.equal(
+    hash(refs),
+    manifest.sourceReferenceSha256,
+    "Source references hash mismatch",
+  );
+  const sourceIds = new Set(JSON.parse(refs).map((r) => r.id));
+  for (const c of cases)
+    for (const id of c.sourceRefs)
+      assert(sourceIds.has(id), "Unknown source reference " + id);
+  return { cases, caseHash: hash(bytes), manifest };
+}
 export function renderPrompt(c, fixture) {
   const values = {
     account: fixture.accounts[c.accountIndex].address,

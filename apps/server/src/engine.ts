@@ -49,7 +49,7 @@ export function reports_consistent(
     checks: result.checks.map((c) =>
       ["request-validity", "delivery-validity", "request-replay"].includes(
         c.checkId,
-      ) && c.status === "PASS"
+      )
         ? { ...c, actual: "<caller-context>" }
         : c,
     ),

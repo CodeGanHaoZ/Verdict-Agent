@@ -1,5 +1,5 @@
 {
-  "datasetVersion": "1.0.0",
+  "datasetVersion": "1.1.0",
   "ruleVersion": "eth-account-v1",
   "purpose": "PI orchestration evaluation; not training data or provider reputation",
   "caseOrigin": "Locally authored scenario prompts and expected outcomes; MIT project license",
@@ -78,6 +78,11 @@
     "LIVE labels the model transport, not the frozen Ethereum state.",
     "Faults are injected before local adapter signing; no RPC provider signs these deliveries.",
     "Expected outcomes are test oracles, never passed to the model as verdicts.",
-    "Model messages and live reports remain under .local; no keys in this dataset."
-  ]
+    "Model messages and live reports remain under .local; no keys in this dataset.",
+    "Blind cases mask outcomes: seeded opaque service IDs, shuffled catalog, uniform FAULT_INJECTION exercise provenance; outcome oracle stays in evaluator only."
+  ],
+  "blindCaseFile": "blind-cases.json",
+  "blindCaseFileSha256": "124e522a6ae7c7bc31f5a91903107ff95cee60d1dc01eee77b4664d98758225a",
+  "sourceReferenceFile": "sources.json",
+  "sourceReferenceSha256": "6999647fb1613e8a83a56273d41df7ff003f547634b898934a2eaef84e8321ff"
 }

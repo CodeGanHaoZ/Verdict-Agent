@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
-export function createLocalStack({ agent } = {}) {
+export function createLocalStack({ agent, blind } = {}) {
   // Foreground child handles, never a reused PID file or another user's running service.
   const root = process.cwd();
   const local = resolve(root, ".local");
@@ -139,19 +139,61 @@ export function createLocalStack({ agent } = {}) {
     const read = (name) =>
       JSON.parse(readFileSync(resolve(directory, name + ".json"), "utf8"));
     const endpoints = new Map();
-    for (const name of ["demo-wrong-block", "demo-wrong-value", "demo-valid"])
+    const templates = ["demo-wrong-block", "demo-wrong-value", "demo-valid"];
+    const definitions = blind
+      ? blind.slots.map((slot, i) => ({ ...slot, template: templates[i] }))
+      : templates.map((id) => ({ id, template: id }));
+    for (const slot of definitions) {
+      const config = read(slot.template);
+      if (blind) {
+        config.serviceId = slot.id;
+        config.variant = slot.variant;
+        config.testFaults = true;
+        config.delayMs = slot.variant === "timeout" ? 1000 : 0;
+      }
       endpoints.set(
-        name,
-        (await service("services/demo/dist/main.js", name, read(name))) +
+        slot.id,
+        (await service("services/demo/dist/main.js", slot.id, config)) +
           "/deliver",
       );
+    }
     const byName = new Map();
     for (const name of ["local-two", "local-one"]) {
       const config = read(name);
-      config.services = config.services.map((s) => ({
-        ...s,
-        endpoint: endpoints.get(s.serviceId) ?? s.endpoint,
-      }));
+      if (blind) {
+        config.services = definitions.map((slot) => {
+          const source = config.services.find(
+            (s) => s.serviceId === slot.template,
+          );
+          const capabilities = structuredClone(source.capabilities);
+          if (
+            slot.role === "probe" &&
+            blind.scenario.profile === "unsupported-block"
+          )
+            capabilities.blockHashes = ["0x" + "22".repeat(32)];
+          return {
+            ...source,
+            serviceId: slot.id,
+            endpoint: endpoints.get(slot.id),
+            source: "FAULT_INJECTION",
+            quoteWei:
+              slot.role === "probe" && blind.scenario.profile === "unknown-cost"
+                ? null
+                : "0",
+            timeoutMs: slot.variant === "timeout" ? 150 : 3000,
+            capabilities,
+          };
+        });
+        for (const context of config.contexts)
+          context.keyBindings = definitions.map((slot) => ({
+            ...context.keyBindings.find((k) => k.serviceId === slot.template),
+            serviceId: slot.id,
+          }));
+      } else
+        config.services = config.services.map((s) => ({
+          ...s,
+          endpoint: endpoints.get(s.serviceId) ?? s.endpoint,
+        }));
       if (name === "local-one" && agent)
         config.agent = {
           ...agent,

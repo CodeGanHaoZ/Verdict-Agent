@@ -10,7 +10,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,6 +21,7 @@ jobs:
       - run: npm run dataset:check
       - run: npm run typecheck
       - run: npm run test:all
+      - run: npm run test:360
       - name: Portable process and Agent tool demo
         run: npm run verify:local
       - name: Independent process demo

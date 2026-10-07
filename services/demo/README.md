@@ -12,3 +12,5 @@ npm run demo:service -- --config .local/b-demo/demo-valid.json
 每个服务用独立 SQLite 持久化 requestId＋请求摘要＋签名响应；相同请求复用一次交付，冲突返回 409，崩溃中不确定的旧调用不重新签发。私钥本地生成并留在被忽略的 `.local/`，不写入公开证据。
 
 集成测试显式 `testFaults=true` 才能启用 missing-proof、rate-limit、timeout、unsupported、bad-signature。它们为受控测试服务，不能算真实 RPC 故障。`npm run test:b` 实际通过 HTTP 调用这些模式并执行 A 内核。
+
+异常盲测通过显式 `testFaults=true` 启用错账户／请求／链、过期、缺头／字段、损坏／截断证明、无签名、签后篡改、重复 JSON 键、超大响应和首次错误后修复。`health.received` 统计实际收到的合法交付请求，`generated` 统计已生成签名材料。盲测 ID 采用中性别名，常规三个演示名不变；[配方与来源](../../docs/17-360异常评测.md) 不会发给模型。

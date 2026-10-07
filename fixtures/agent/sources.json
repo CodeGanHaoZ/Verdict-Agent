@@ -1,0 +1,68 @@
+[
+  {
+    "id": "eip1186",
+    "url": "https://eips.ethereum.org/EIPS/eip-1186",
+    "readVia": "https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1186.md",
+    "gitBlobSha": "1a341c3f9b8094955d386ad63b5c04e3bcc491f3",
+    "contentSha256": "e299a806b26c2502ccf00830695989977ee88570ae034c474ac157c11810005e",
+    "reviewedAt": "2026-10-07T07:06:38.349560+00:00",
+    "application": "账户证明沿 stateRoot 下的地址路径核对；错账户、缺失或损坏材料分别测试。",
+    "classification": "NORMATIVE_OR_SECURITY_GUIDANCE_NOT_INCIDENT"
+  },
+  {
+    "id": "eip712",
+    "url": "https://eips.ethereum.org/EIPS/eip-712",
+    "readVia": "https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md",
+    "gitBlobSha": "d6f7ba3c20ceaefb20acc185a11f13d4bc950d02",
+    "contentSha256": "459086f5a0b2d6a0ac4e404faebf3660a49aa4b1712711521093380689f02304",
+    "reviewedAt": "2026-10-07T07:06:38.349837+00:00",
+    "application": "签名本身不提供重放保护；请求绑定、时效、重复消费由本地协议负责。",
+    "classification": "NORMATIVE_OR_SECURITY_GUIDANCE_NOT_INCIDENT"
+  },
+  {
+    "id": "eip1474",
+    "url": "https://eips.ethereum.org/EIPS/eip-1474",
+    "readVia": "https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1474.md",
+    "gitBlobSha": "9a1aa362800a0fdbc38da04b3a3ffb7823bd2b7b",
+    "contentSha256": "c7070c73e4399666dbdfc19dff89f3e61c142ffe44fa6798af135312918c59e6",
+    "reviewedAt": "2026-10-07T07:06:38.349911+00:00",
+    "application": "RPC 将无效参数、缺资源、方法不支持及限额区分；超时阈值由项目配置，不声称规范规定150ms。",
+    "classification": "NORMATIVE_OR_SECURITY_GUIDANCE_NOT_INCIDENT"
+  },
+  {
+    "id": "rfc6585",
+    "url": "https://www.rfc-editor.org/rfc/rfc6585.txt",
+    "readVia": "https://www.rfc-editor.org/rfc/rfc6585.txt",
+    "gitBlobSha": null,
+    "contentSha256": "f6d55d1b491cd515c35827cf9181753b23b2a68c4df14e56d83dc445b3876e58",
+    "reviewedAt": "2026-10-07T07:06:38.349939+00:00",
+    "application": "HTTP 429 与 Retry-After 表示限流，不是已签名的错误数据。",
+    "classification": "NORMATIVE_OR_SECURITY_GUIDANCE_NOT_INCIDENT"
+  },
+  {
+    "id": "rfc8259",
+    "url": "https://www.rfc-editor.org/rfc/rfc8259.txt",
+    "readVia": "https://www.rfc-editor.org/rfc/rfc8259.txt",
+    "gitBlobSha": null,
+    "contentSha256": "61a5378f4255c720beb2a4b4a63b29540147c140f36988bf086291989b4cd2d7",
+    "reviewedAt": "2026-10-07T07:06:38.349971+00:00",
+    "application": "成员名称应唯一；实现可限制文本大小、嵌套深度及数值范围。项目选择严格拒绝重复键与超过2MiB响应。",
+    "classification": "NORMATIVE_OR_SECURITY_GUIDANCE_NOT_INCIDENT"
+  },
+  {
+    "id": "owasp-injection",
+    "url": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+    "readVia": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+    "gitBlobSha": null,
+    "contentSha256": "98390424ae850a93f04ddcc410d3dd0417050959d62f74ce5f09e74a2069fa49",
+    "reviewedAt": "2026-10-07T07:06:38.350310+00:00",
+    "application": "外部网站或文件中的指令属于间接提示注入；本例只验证证据自由文本被元数据投影隔离，非任意注入防护承诺。",
+    "classification": "NORMATIVE_OR_SECURITY_GUIDANCE_NOT_INCIDENT"
+  },
+  {
+    "id": "local-policy",
+    "url": null,
+    "classification": "PROJECT_ENGINEERING_POLICY",
+    "application": "验收预算、来源分组、历史适用性、修复后重新验收均为项目策略，不冒称外部标准。"
+  }
+]

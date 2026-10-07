@@ -28,3 +28,5 @@ Ctrl-C 停止前台进程。不要同时用前台命令和统一脚本占同一�
 setup.mjs 的可选首参数可指定 `.local` 内的隔离输出目录，默认路径不变，已有文件保留。verify.mjs 的第三个参数可指定运行摘要文件，默认仍是 `.local/b-demo/verification.json`。不要同时让多个进程写同一数据库。
 
 `local-stack.mjs` 复用独立五进程生命周期。`verify:pi:local` 读取显式模型环境，使用同一进程栈运行 [PI 数据集](../../fixtures/agent/README.md)；真实 API 仅由该显式命令访问。`verify:pi` 对已运行的后端评测，均不再生成或确认草案。
+
+360 异常入口：`npm run test:360`（6 条证据审计＋20 条确定性异常），`npm run verify:360 -- live`（显式真实 PI），`npm run report:360 -- <report.json>` 生成独立分母的指标。没有模型的确定性执行清楚标为 DETERMINISTIC_EXECUTOR。
