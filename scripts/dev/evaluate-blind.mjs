@@ -129,6 +129,9 @@ export async function evaluateBlind(
         base,
         `/api/agent/runs/${activeAgent}/events?after=0`,
       );
+      row.modelTimings = events
+        .filter((e) => e.type === "MODEL_RESPONSE")
+        .map((e) => e.data);
       row.tools = events
         .filter((e) => e.type === "TOOL_START")
         .map((e) => ({ name: e.toolName, arguments: e.data.arguments }));

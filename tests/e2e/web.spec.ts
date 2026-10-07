@@ -203,6 +203,7 @@ test("PI direct submission runs real tools without a draft and restores on refre
   await expect(page.locator("#pi-progress")).toContainText("TEST_TRANSPORT");
   await expect(page.locator(".attempt")).toHaveCount(3);
   await expect(page.locator("#pi-progress")).toContainText("start_task");
+  await expect(page.locator("#pi-progress")).toContainText("查看请求耗时");
   await expect(page.locator("#pi-progress")).toContainText(
     "request_verified_state",
   );

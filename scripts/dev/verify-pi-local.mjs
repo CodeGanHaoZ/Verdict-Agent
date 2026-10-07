@@ -9,7 +9,18 @@ const agent = ServerConfigSchema.shape.agent.unwrap().parse({
   apiKeyEnv: process.env.VERDICT_PI_KEY_ENV ?? "VERDICT_PI_API_KEY",
   compatibility: process.env.VERDICT_PI_COMPAT ?? "openai",
   outputTokens: Number(process.env.VERDICT_PI_OUTPUT_TOKENS ?? 1024),
+  maxInputChars: Number(
+    process.env.VERDICT_PI_MAX_INPUT_CHARS ??
+      (process.env.VERDICT_PI_COMPAT === "glm" ? 64000 : 32000),
+  ),
   source: "LIVE",
+  requestTimeoutMs: Number(process.env.VERDICT_PI_REQUEST_TIMEOUT_MS ?? 90000),
+  firstEventTimeoutMs: Number(
+    process.env.VERDICT_PI_FIRST_EVENT_TIMEOUT_MS ?? 60000,
+  ),
+  streamIdleTimeoutMs: Number(
+    process.env.VERDICT_PI_STREAM_IDLE_TIMEOUT_MS ?? 15000,
+  ),
 });
 if (!process.env[agent.apiKeyEnv])
   throw new Error("Configured model key environment variable is missing");

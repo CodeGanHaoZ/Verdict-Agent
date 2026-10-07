@@ -19,7 +19,12 @@ export type ScriptedMode =
   | "loop"
   | "post-pass-error"
   | "direct-incomplete"
-  | "direct-rebind";
+  | "direct-rebind"
+  | "slow-stream"
+  | "stream-stall"
+  | "stream-forever"
+  | "heartbeat-only"
+  | "null-task";
 export async function harness(
   options: {
     port?: number;
@@ -106,6 +111,52 @@ export async function harness(
       res.on("close", () => clearTimeout(timer));
       return;
     }
+    if (
+      [
+        "slow-stream",
+        "stream-stall",
+        "stream-forever",
+        "heartbeat-only",
+      ].includes(scripted.mode)
+    ) {
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.flushHeaders();
+      const mode = scripted.mode;
+      const chunk = (delta: unknown, finish_reason: string | null = null) =>
+        res.write(
+          "data: " +
+            JSON.stringify({
+              id: "timing-test",
+              object: "chat.completion.chunk",
+              created: 1,
+              model: "test-transport-only",
+              choices: [{ index: 0, delta, finish_reason }],
+            }) +
+            "\n\n",
+        );
+      if (mode !== "heartbeat-only")
+        chunk({
+          role: "assistant",
+          reasoning_content: "PRIVATE_REASONING_TIMING_SENTINEL",
+        });
+      const interval = setInterval(() => {
+        if (mode === "heartbeat-only") res.write(": heartbeat\n\n");
+        else if (mode !== "stream-stall") chunk({ reasoning_content: "." });
+      }, 40);
+      const timer =
+        mode === "slow-stream"
+          ? setTimeout(() => {
+              chunk({ content: "请补充账户和区块。" });
+              chunk({}, "stop");
+              res.end("data: [DONE]\n\n");
+            }, 450)
+          : undefined;
+      res.on("close", () => {
+        clearInterval(interval);
+        clearTimeout(timer);
+      });
+      return;
+    }
     const draft = body.messages.some(
       (m: any) =>
         m.role === "system" &&
@@ -143,7 +194,15 @@ export async function harness(
         text = "请提供明确账户和固定区块；未调用任何服务。";
       else if (direct && !results.length) {
         const { missing, explanation, ...conditions } = proposal;
-        calls = [{ name: "start_task", arguments: conditions }];
+        calls = [
+          {
+            name: "start_task",
+            arguments:
+              scripted.mode === "null-task"
+                ? { ...conditions, blockHash: null }
+                : conditions,
+          },
+        ];
       } else if (direct && scripted.mode === "direct-rebind") {
         const { missing, explanation, ...conditions } = proposal;
         calls = [

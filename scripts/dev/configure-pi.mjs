@@ -30,7 +30,34 @@ if (!["openai", "glm"].includes(compatibility))
 const outputTokens = Number(process.env.VERDICT_PI_OUTPUT_TOKENS ?? 1024);
 if (!Number.isInteger(outputTokens) || outputTokens < 64 || outputTokens > 8192)
   throw new Error("VERDICT_PI_OUTPUT_TOKENS must be 64..8192");
+const timeouts = {
+  requestTimeoutMs: Number(process.env.VERDICT_PI_REQUEST_TIMEOUT_MS ?? 90000),
+  firstEventTimeoutMs: Number(
+    process.env.VERDICT_PI_FIRST_EVENT_TIMEOUT_MS ?? 60000,
+  ),
+  streamIdleTimeoutMs: Number(
+    process.env.VERDICT_PI_STREAM_IDLE_TIMEOUT_MS ?? 15000,
+  ),
+};
+if (
+  Object.values(timeouts).some(
+    (n) => !Number.isInteger(n) || n < 1 || n > 120000,
+  )
+)
+  throw new Error("Model timeouts must be 1..120000 ms");
+const maxInputChars = Number(
+  process.env.VERDICT_PI_MAX_INPUT_CHARS ??
+    (compatibility === "glm" ? 64000 : 32000),
+);
+if (
+  !Number.isInteger(maxInputChars) ||
+  maxInputChars < 1000 ||
+  maxInputChars > 64000
+)
+  throw new Error("VERDICT_PI_MAX_INPUT_CHARS must be 1000..64000");
 config.agent = {
+  maxInputChars,
+  ...timeouts,
   baseURL,
   modelId,
   apiKeyEnv,

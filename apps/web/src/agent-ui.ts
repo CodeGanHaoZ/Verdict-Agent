@@ -105,7 +105,7 @@ export function mountAgentUI(
         .slice(-100)
         .map(
           (ev) =>
-            `<li><span>${e(time(ev.at))} · ${e(ev.type)} ${e(ev.toolName ?? "")}</span>${ev.type === "TOOL_END" ? `<details><summary>查看工具结果</summary><pre>${e(JSON.stringify(ev.data, null, 2))}</pre></details>` : ev.type === "ERROR" ? `<code>${e(JSON.stringify(ev.data))}</code>` : ""}</li>`,
+            `<li><span>${e(time(ev.at))} · ${e(ev.type)} ${e(ev.toolName ?? "")}</span>${["TOOL_END", "MODEL_RESPONSE"].includes(ev.type) ? `<details><summary>${ev.type === "MODEL_RESPONSE" ? "查看请求耗时" : "查看工具结果"}</summary><pre>${e(JSON.stringify(ev.data, null, 2))}</pre></details>` : ev.type === "ERROR" ? `<code>${e(JSON.stringify(ev.data))}</code>` : ""}</li>`,
         )
         .join("")}</ol>`;
     $("#pi-stop")?.addEventListener("click", async () => {

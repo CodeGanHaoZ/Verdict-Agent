@@ -566,3 +566,119 @@ test("GLM transport uses its explicit token field without unsupported thinking s
     await configured.close();
   }
 });
+
+test("model timing distinguishes first-event wait, stream stalls and a hard request deadline without logging reasoning", async () => {
+  const c = h.app.engine.config.agent!;
+  const saved = {
+    requestTimeoutMs: c.requestTimeoutMs,
+    firstEventTimeoutMs: c.firstEventTimeoutMs,
+    streamIdleTimeoutMs: c.streamIdleTimeoutMs,
+  };
+  try {
+    for (const [mode, stage, total, first, idle] of [
+      ["timeout", "FIRST_EVENT", 1200, 200, 150],
+      ["heartbeat-only", "FIRST_EVENT", 1200, 200, 150],
+      ["stream-stall", "STREAM_IDLE", 1200, 300, 150],
+      ["stream-forever", "REQUEST_TOTAL", 450, 250, 150],
+      ["slow-stream", null, 1500, 250, 150],
+    ] as const) {
+      h.scripted.mode = mode;
+      Object.assign(c, {
+        requestTimeoutMs: total,
+        firstEventTimeoutMs: first,
+        streamIdleTimeoutMs: idle,
+      });
+      const created = await api("/api/agent/runs", {
+        clientRequestId: randomUUID(),
+        prompt: "请检查账户状态",
+      });
+      const a = await waitAgent(created.data.agentId);
+      const events = (await api(`/api/agent/runs/${a.agentId}/events?after=0`))
+        .data.events;
+      const timings = events.filter((e: any) => e.type === "MODEL_RESPONSE");
+      assert.equal(timings.length, 1);
+      const t = timings[0].data;
+      assert.equal(t.timeoutStage, stage);
+      assert.equal(t.completion, stage ? "TIMEOUT" : "COMPLETED");
+      assert.equal(a.error, stage ? "MODEL_TIMEOUT" : null);
+      assert.equal(a.runId, null);
+      assert(
+        !JSON.stringify(events).includes("PRIVATE_REASONING_TIMING_SENTINEL"),
+      );
+      if (mode === "timeout") assert.equal(t.headersMs, null);
+      if (mode === "heartbeat-only") {
+        assert(t.firstByteMs !== null);
+        assert.equal(t.firstEventMs, null);
+      }
+      if (mode === "slow-stream") {
+        assert(t.firstEventMs !== null);
+        assert(t.firstOutputMs > t.firstEventMs);
+        assert(t.totalMs > first);
+      }
+    }
+  } finally {
+    Object.assign(c, saved);
+    h.scripted.mode = "normal";
+  }
+});
+
+test("overall task budget still aborts a healthy model stream before its longer request deadline", async () => {
+  const c = h.app.engine.config.agent!;
+  const saved = {
+    requestTimeoutMs: c.requestTimeoutMs,
+    firstEventTimeoutMs: c.firstEventTimeoutMs,
+    streamIdleTimeoutMs: c.streamIdleTimeoutMs,
+    maxDurationMs: c.maxDurationMs,
+  };
+  try {
+    Object.assign(c, {
+      requestTimeoutMs: 1500,
+      firstEventTimeoutMs: 500,
+      streamIdleTimeoutMs: 250,
+      maxDurationMs: 300,
+    });
+    h.scripted.mode = "stream-forever";
+    const created = await api("/api/agent/runs", {
+      clientRequestId: randomUUID(),
+      prompt: "检查账户",
+    });
+    const a = await waitAgent(created.data.agentId);
+    assert.equal(a.error, "BUDGET_EXHAUSTED");
+    assert.equal(a.runId, null);
+    const events = (await api(`/api/agent/runs/${a.agentId}/events?after=0`))
+      .data.events;
+    const t = events.find((e: any) => e.type === "MODEL_RESPONSE").data;
+    assert.equal(t.completion, "CANCELLED");
+    assert.equal(t.timeoutStage, null);
+    assert(t.totalMs < 1500);
+  } finally {
+    Object.assign(c, saved);
+    h.scripted.mode = "normal";
+  }
+});
+
+test("an unknown task field can be null without inventing a target or generating a delivery", async () => {
+  h.scripted.mode = "null-task";
+  try {
+    const created = await api("/api/agent/runs", {
+      clientRequestId: randomUUID(),
+      prompt: `检查账户 ${h.proposal.account}；区块尚未指定。`,
+    });
+    const a = await waitAgent(created.data.agentId);
+    assert.equal(a.status, "STOPPED");
+    assert.equal(a.error, null);
+    assert.equal(a.runId, null);
+    const events = (await api(`/api/agent/runs/${a.agentId}/events?after=0`))
+      .data.events;
+    assert(
+      events.some(
+        (e: any) =>
+          e.type === "TOOL_END" &&
+          e.toolName === "start_task" &&
+          JSON.stringify(e.data).includes("started"),
+      ),
+    );
+  } finally {
+    h.scripted.mode = "normal";
+  }
+});

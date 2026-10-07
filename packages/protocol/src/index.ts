@@ -261,7 +261,7 @@ export const AgentSnapshotSchema = z.strictObject({
 });
 export const AgentEventSchema = z.strictObject({
   agentId:Id, sequence:z.number().int().positive(), at:z.string().datetime(),
-  type:z.enum(['STATUS','MODEL_REQUEST','ASSISTANT_TEXT','TOOL_START','TOOL_END','ERROR']),
+  type:z.enum(['STATUS','MODEL_REQUEST','MODEL_RESPONSE','ASSISTANT_TEXT','TOOL_START','TOOL_END','ERROR']),
   toolName:z.string().optional(), toolCallId:z.string().optional(), data:z.unknown(),
 });
 export const CreateAgentDraftSchema=z.strictObject({clientRequestId:Id,prompt:z.string().trim().min(1).max(6000)});
@@ -277,3 +277,15 @@ export type AgentError=z.infer<typeof AgentErrorSchema>;
 
 // Direct PI task submission; execution does not require a draft confirmation.
 export const CreateAgentRunSchema = z.strictObject({clientRequestId:Id,prompt:z.string().trim().min(1).max(6000)});
+
+// Local transport diagnostics, separate from signed delivery evidence.
+export const ModelRequestTimingSchema = z.strictObject({
+  request:z.number().int().positive(),headersMs:z.number().nonnegative().nullable(),
+  firstByteMs:z.number().nonnegative().nullable(),firstEventMs:z.number().nonnegative().nullable(),
+  firstOutputMs:z.number().nonnegative().nullable(),totalMs:z.number().nonnegative(),
+  bytesReceived:z.number().int().nonnegative(),chunksReceived:z.number().int().nonnegative(),httpStatus:z.number().int().nullable(),
+  timeoutStage:z.enum(['FIRST_EVENT','STREAM_IDLE','REQUEST_TOTAL']).nullable(),
+  completion:z.enum(['COMPLETED','ERROR','CANCELLED','TIMEOUT']),stopReason:z.string().nullable(),
+  requestTimeoutMs:z.number().int().positive(),firstEventTimeoutMs:z.number().int().positive(),streamIdleTimeoutMs:z.number().int().positive(),
+});
+export type ModelRequestTiming=z.infer<typeof ModelRequestTimingSchema>;

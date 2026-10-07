@@ -82,6 +82,9 @@ export async function evaluateAgent(
       );
       const after = await counts();
       Object.assign(row, {
+        modelTimings: events
+          .filter((e) => e.type === "MODEL_RESPONSE")
+          .map((e) => e.data),
         agentStatus: agent.status,
         modelStatus: agent.modelStatus,
         error: agent.error,
@@ -134,9 +137,20 @@ export async function evaluateAgent(
         for (const attempt of run.attempts)
           assert(c.candidateIds.includes(attempt.serviceId));
         if (c.expected.requiredTools.includes("replay_evidence")) {
-          const replayIndex = row.tools.findIndex(t => t.name === "replay_evidence" && t.arguments.targetId === "local-two");
-          const acceptedIndex = row.tools.findIndex(t => t.name === "request_verified_state" && t.arguments.serviceId === "demo-valid");
-          assert(replayIndex >= 0 && acceptedIndex > replayIndex, "Must replay on the configured second instance before accepting a new delivery");
+          const replayIndex = row.tools.findIndex(
+            (t) =>
+              t.name === "replay_evidence" &&
+              t.arguments.targetId === "local-two",
+          );
+          const acceptedIndex = row.tools.findIndex(
+            (t) =>
+              t.name === "request_verified_state" &&
+              t.arguments.serviceId === "demo-valid",
+          );
+          assert(
+            replayIndex >= 0 && acceptedIndex > replayIndex,
+            "Must replay on the configured second instance before accepting a new delivery",
+          );
         }
         if (run.status === "SUCCEEDED")
           assert(
