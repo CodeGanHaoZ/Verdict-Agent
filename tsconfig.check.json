@@ -15,6 +15,7 @@
     "fixtures/core/*.ts",
     "tests/integration/**/*.ts",
     "tests/e2e/**/*.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "scripts/dev/redteam-agent.ts"
   ]
 }

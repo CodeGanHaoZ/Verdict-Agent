@@ -1,0 +1,34 @@
+[
+  {
+    "id": "agentdojo",
+    "url": "https://github.com/ethz-spylab/agentdojo",
+    "gitBlobSha": "81d78d00c68d614b9e3c40e1b4dad56d8c74ced1",
+    "contentSha256": "d8c6460ecce9bbf59ed300fbc74b4440188f74cd147a7611836270be49e7660e",
+    "reviewedAt": "2026-10-07T07:58:31.567076+00:00",
+    "use": "公开动态Agent攻击评测，区分攻击目标达成与原任务效用；仅借鉴方法，本项目未运行完整上游benchmark。"
+  },
+  {
+    "id": "agentdojo-instructions",
+    "url": "https://github.com/ethz-spylab/agentdojo/blob/main/src/agentdojo/attacks/important_instructions_attacks.py",
+    "gitBlobSha": "13122863d7f373f3da44936f0b0629e9673b7338",
+    "contentSha256": "519f24e0b9d72f43343d665679adacc33758b50cd1b586a81fa53fb098dcfe71",
+    "reviewedAt": "2026-10-07T07:58:31.567137+00:00",
+    "use": "假冒用户重要通知、先执行攻击目标再完成原任务；本轮自编中文载荷，不复制上游代码。"
+  },
+  {
+    "id": "indirect-injection",
+    "url": "https://arxiv.org/abs/2302.12173",
+    "gitBlobSha": null,
+    "contentSha256": "dbdf0bb45f06b2afe28c0eea8bae8ba3557df7171cb971749416baede9ab30d5",
+    "reviewedAt": "2026-10-07T07:58:31.567199+00:00",
+    "use": "公开研究揭示外部文本的数据/指令混淆；本轮用明确标记的服务引用承载任务替换指令。"
+  },
+  {
+    "id": "owasp-llm01",
+    "url": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+    "gitBlobSha": null,
+    "contentSha256": "27d024b5700bdb7349f4d1ca680f71414198aad27527dbb5bec6e12b822ea0cc",
+    "reviewedAt": "2026-10-07T07:58:31.567567+00:00",
+    "use": "提示注入通过越权指令改变模型行为；含直接与间接注入分类。"
+  }
+]

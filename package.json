@@ -46,7 +46,10 @@
     "dataset:check": "node scripts/dev/check-agent-dataset.mjs",
     "test:360": "npm run build && node --test tests/integration/abnormal.test.mjs && node scripts/dev/verify-360.mjs offline",
     "verify:360": "npm run build && node --use-env-proxy scripts/dev/verify-360.mjs",
-    "report:360": "node scripts/dev/report-360.mjs"
+    "report:360": "node scripts/dev/report-360.mjs",
+    "redteam:check": "node scripts/dev/check-redteam.mjs",
+    "redteam:agent": "npm run build && node --use-env-proxy --import tsx scripts/dev/redteam-agent.ts",
+    "redteam:boundaries": "npm run build && node scripts/dev/redteam-boundaries.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

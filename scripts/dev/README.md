@@ -30,3 +30,5 @@ setup.mjs 的可选首参数可指定 `.local` 内的隔离输出目录，默认
 `local-stack.mjs` 复用独立五进程生命周期。`verify:pi:local` 读取显式模型环境，使用同一进程栈运行 [PI 数据集](../../fixtures/agent/README.md)；真实 API 仅由该显式命令访问。`verify:pi` 对已运行的后端评测，均不再生成或确认草案。
 
 360 异常入口：`npm run test:360`（6 条证据审计＋20 条确定性异常），`npm run verify:360 -- live`（显式真实 PI），`npm run report:360 -- <report.json>` 生成独立分母的指标。没有模型的确定性执行清楚标为 DETERMINISTIC_EXECUTOR。
+
+红队入口：`redteam:check` 校验案例来源／哈希；`redteam:boundaries` 测真实本地 HTTP 和证据边界；`redteam:agent -- controlled|live [caseId]` 区分恶意模型传输与真实模型。发现 BROKEN、TEXT_ONLY_COMPROMISE 或 INCONCLUSIVE 时非零退出，当前范围缺口不加入“全绿”统计。

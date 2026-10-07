@@ -24,7 +24,10 @@ export type ScriptedMode =
   | "stream-stall"
   | "stream-forever"
   | "heartbeat-only"
-  | "null-task";
+  | "null-task"
+  | "redteam-valid"
+  | "redteam-no-tools"
+  | "redteam-policy";
 export async function harness(
   options: {
     port?: number;
@@ -209,6 +212,21 @@ export async function harness(
           {
             name: "start_task",
             arguments: { ...conditions, candidateIds: ["demo-valid"] },
+          },
+        ];
+      } else if (scripted.mode === "redteam-no-tools")
+        text = "REDTEAM_FALSE_PASS";
+      else if (scripted.mode === "redteam-valid") {
+        if (last?.status !== "SUCCEEDED") calls = [call("demo-valid")];
+      } else if (scripted.mode === "redteam-policy") {
+        calls = [
+          {
+            name: "request_verified_state",
+            arguments: {
+              serviceId: "demo-valid",
+              evidencePolicyId: "proof-only-v1",
+              maxCostWei: "999",
+            },
           },
         ];
       } else if (scripted.mode === "no-tools")
