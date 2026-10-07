@@ -14,6 +14,7 @@ const config = JSON.parse(readFileSync(file, "utf8"));
 config.wallet = {
   networks: [{
     chainId: "0x3c8",
+    nativeSymbol: "tBOT",
     name: "BOT Chain Testnet",
     rpcUrlEnv: "VERDICT_WALLET_RPC_URL",
     maxValueWei: "100000000000000",
