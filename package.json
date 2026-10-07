@@ -60,7 +60,9 @@
     "obs:stop": "node scripts/dev/observability-control.mjs stop",
     "obs:configure": "node scripts/dev/observability-control.mjs configure",
     "verify:obs": "npm run build && tsx scripts/dev/verify-observability.ts",
-    "redteam:indirect": "tsx scripts/dev/redteam-indirect.ts"
+    "redteam:indirect": "tsx scripts/dev/redteam-indirect.ts",
+    "graph:record": "npm run build && tsx scripts/dev/record-agent-graph.ts",
+    "test:graph": "npm run build && tsx --test tests/integration/graph*.test.ts"
   },
   "devDependencies": {
     "typescript": "5.9.3",

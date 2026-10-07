@@ -1,3 +1,4 @@
+import { GraphStore } from "./graph-store.js";
 import { Observability } from "./observability.js";
 import { GuardReports } from "./guard-reports.js";
 import { Guard, boundaryViolation } from "./guard.js";
@@ -75,6 +76,7 @@ const safeCandidates = (cs: Candidate[]) =>
   }));
 export class AgentService {
   readonly store: AgentStore;
+  readonly graph:GraphStore;
   readonly observer: Observability;
   readonly guard: Guard;
   readonly reports: GuardReports;
@@ -86,6 +88,7 @@ export class AgentService {
   constructor(readonly engine: Engine) {
     this.observer=new Observability(engine.store,engine.config);
     this.store = new AgentStore(engine.store,event=>this.observer.agentEvent(event));
+    this.graph=new GraphStore(engine.store,engine.config);
     this.guard = new Guard(engine.store,this.observer.record);
     this.reports = new GuardReports(engine.store,engine.config);
   }
@@ -568,6 +571,22 @@ export class AgentService {
       expire,
       input?.task.budget.timeoutMs ?? c.maxDurationMs,
     );
+    this.graph.begin(id);
+    let executingAction:ReturnType<GraphStore['propose']>|undefined;
+    let actionHasOutcome=false;
+    const graphAttempt:import('./engine.js').AttemptObserver=(phase,attempt,durationMs)=>{
+      if(!executingAction)return;
+      if(['EVIDENCE_SAVED','ADOPTED','REUSED','ATTEMPT_FAILED'].includes(phase))actionHasOutcome=true;
+      const detail={attemptId:attempt.attemptId,...(attempt.evidenceId?{evidenceId:attempt.evidenceId}:{}),...(durationMs!==undefined?{durationMs}:{}),...(attempt.verification?{dataVerdict:attempt.verification.dataVerdict,attributionStatus:attempt.verification.attributionStatus,...(attempt.verification.reasonCodes[0]?{reasonCode:attempt.verification.reasonCodes[0]}:{})}:{})};
+      if(phase==='DELIVERY_STARTED')this.graph.append(id,executingAction,'EXECUTION','RUNNING',detail);
+      if(phase==='DELIVERY_COMPLETED')this.graph.append(id,executingAction,'EXECUTION','COMPLETED',detail);
+      if(phase==='VERIFICATION_STARTED')this.graph.append(id,executingAction,'VERIFICATION','RUNNING',detail);
+      if(phase==='VERIFICATION_COMPLETED')this.graph.append(id,executingAction,'VERIFICATION',attempt.verification!.verdict,detail);
+      if(phase==='EVIDENCE_SAVED')this.graph.append(id,executingAction,'OUTCOME',attempt.verification!.verdict,{...detail,publicationStatus:this.engine.store.evidenceRow(attempt.evidenceId!).publication.status});
+      if(phase==='ADOPTED')this.graph.append(id,executingAction,'OUTCOME','ADOPTED',detail);
+      if(phase==='REUSED')this.graph.append(id,executingAction,'OUTCOME','REUSED',detail);
+      if(phase==='ATTEMPT_FAILED')this.graph.append(id,executingAction,'OUTCOME','ERROR',{...detail,reasonCode:attempt.runtimeReason??'UNKNOWN'});
+    };
     const allowedEvidence = new Set<string>();
     const gate = () => {
       if (stoppedWithoutRun) throw new AgentFailure("TOOL_INVALID");
@@ -681,7 +700,7 @@ export class AgentService {
           z.strictObject({ serviceId: z.string().min(1).max(160) }),
           async ({ serviceId }) => {
             gate();
-            const result = await this.engine.attemptManaged(runId(), serviceId);
+            const result = await this.engine.attemptManaged(runId(), serviceId,graphAttempt);
             for (const attempt of result.attempts)
               if (attempt.evidenceId) allowedEvidence.add(attempt.evidenceId);
             return safeRun(result);
@@ -724,16 +743,25 @@ export class AgentService {
           async ({ evidenceId, targetId }) => {
             gate();
             const { row, bundle } = ownEvidence(evidenceId);
+            const recordReplay = (result: z.infer<typeof ReplayResultSchema>, durationMs?: number) => {
+              if (!executingAction) return;
+              const verified = result.recomputedResult;
+              this.graph.append(id, executingAction, 'VERIFICATION', verified?.verdict ?? 'UNVERIFIABLE', {
+                evidenceId, ...(durationMs !== undefined ? {durationMs} : {}),
+                ...(verified ? {dataVerdict: verified.dataVerdict, attributionStatus: verified.attributionStatus,
+                  ...(verified.reasonCodes[0] ? {reasonCode: verified.reasonCodes[0]} : {})} : {}),
+              });
+            };
             if (targetId === "local") {
+              const context = this.engine.context(taskInput().contextId, "historical", row.evaluatedAt);
+              const began = performance.now();
+              if (executingAction) this.graph.append(id, executingAction, 'VERIFICATION', 'RUNNING', {evidenceId});
               const checked = await this.engine.checked(
                 bundle,
                 row.manifest,
-                this.engine.context(
-                  taskInput().contextId,
-                  "historical",
-                  row.evaluatedAt,
-                ),
+                context,
               );
+              recordReplay(checked.result, performance.now() - began);
               return {
                 artifactIntegrity: checked.result.artifactIntegrity,
                 comparison: checked.result.comparison,
@@ -760,6 +788,8 @@ export class AgentService {
             const checked = z
               .object({ consistent: z.boolean(), result: ReplayResultSchema })
               .parse(data);
+            // The remote result confirms a replay; HTTP waiting alone is not an A verification.
+            recordReplay(checked.result);
             return {
               consistent: checked.consistent,
               artifactIntegrity: checked.result.artifactIntegrity,
@@ -789,16 +819,33 @@ export class AgentService {
         prompt: prompt + (boundary ? "\nLOCKED_BOUNDARY="+JSON.stringify(boundary.conditions) : "") + (materials.length ? "\nUNTRUSTED_EXTERNAL_MATERIAL="+JSON.stringify(materials) : ""),
         tools: tools.map(tool=>({...tool,execute:async (...args:Parameters<typeof tool.execute>)=>{
           let usedSequence:number|undefined;
-          if(boundary&&tool.name!=='stop_task'){
-            const permit=permits.get(tool.name);
-            if(!permit)throw new AgentFailure('GUARD_STOPPED');
-            permits.delete(tool.name);
-            usedSequence=permit.sequence;
-            this.guard.consume(id,permit.sequence,tool.name,args[1],permit.check,signal);
-          }
-          const result=await tool.execute(...args);
-          if(usedSequence)this.guard.executed(id,usedSequence,result);
-          return result;
+          executingAction=this.graph.action(id,args[0]);
+          actionHasOutcome=false;
+          const began=performance.now();
+          try{
+            if(boundary&&tool.name!=='stop_task'){
+              const permit=permits.get(tool.name);
+              if(!permit)throw new AgentFailure('GUARD_STOPPED');
+              permits.delete(tool.name);
+              usedSequence=permit.sequence;
+              this.guard.consume(id,permit.sequence,tool.name,args[1],permit.check,signal);
+            }
+            if(executingAction&&tool.name!=='request_verified_state')this.graph.append(id,executingAction,'EXECUTION','RUNNING');
+            const result=await tool.execute(...args);
+            if(usedSequence)this.guard.executed(id,usedSequence,result);
+            if(executingAction&&tool.name==='request_verified_state'&&!actionHasOutcome){
+              const persisted=this.engine.store.run(runId());
+              this.graph.append(id,executingAction,'OUTCOME','STOPPED',{reasonCode:persisted.stopReason??'NO_DELIVERY'});
+            }
+            if(executingAction&&tool.name!=='request_verified_state'){
+              this.graph.append(id,executingAction,'EXECUTION','COMPLETED',{durationMs:performance.now()-began});
+              this.graph.append(id,executingAction,'OUTCOME','COMPLETED');
+            }
+            return result;
+          }catch(e){
+            if(executingAction)this.graph.append(id,executingAction,'OUTCOME',signal.aborted?'CANCELLED':'ERROR',{reasonCode:e instanceof AgentFailure?e.reason:e instanceof ApiError?e.message:'INTERNAL_ERROR'});
+            throw e;
+          }finally{executingAction=undefined;}
         }})),
         maxRequests: c.runRequests,
         maxToolCalls: c.toolCalls,
@@ -840,9 +887,12 @@ export class AgentService {
               { toolName, toolCallId },
             );
           },
-          beforeTool: async (name,args) => {
+          beforeTool: async (name,args,toolCallId) => {
+            const action=this.graph.propose(id,toolCallId,name as NonNullable<import('@verdict/protocol').AgentGraphEvent['tool']>,args);
             gate();
-            if(!boundary || !reviewer || name==='stop_task') return;
+            if(!boundary || !reviewer || name==='stop_task'){
+              this.graph.append(id,action,'REVIEW','ALLOW',{reviewerKind:'NOT_ENABLED',reasonCode:name==='stop_task'?'STOP_ALWAYS_ALLOWED':'GUARD_NOT_ENABLED'});return;
+            }
             const hardCheck=()=>{
               if(signal.aborted) return 'CANCELLED';
               if(name==='start_task') {
@@ -864,8 +914,16 @@ export class AgentService {
             };
             const observedRun=a.runId?this.engine.store.run(a.runId):null;
             const executionFacts=observedRun?{runStatus:observedRun.status,adopted:!!observedRun.accepted,spentWei:observedRun.spentWei,attempts:observedRun.attempts.map(attempt=>({serviceId:attempt.serviceId,status:attempt.status,runtimeReason:attempt.runtimeReason,evidenceId:attempt.evidenceId,verdict:attempt.verification?.verdict??null}))}:null;
-            const sequence=await this.guard.authorize(id,reviewer,name,args,hardCheck,signal,executionFacts);
-            if(sequence)permits.set(name,{sequence,check:hardCheck});
+            const reviewStart=performance.now(),previousCount=this.guard.state(id).decisions.length;
+            const reviewerKind=hardCheck()||!['start_task','request_verified_state','replay_evidence'].includes(name)?'HARD_RULE':'MODEL';
+            this.graph.append(id,action,'REVIEW','RUNNING',{reviewerKind});
+            try{
+              const sequence=await this.guard.authorize(id,reviewer,name,args,hardCheck,signal,executionFacts,action.actionId!);
+              if(sequence)permits.set(name,{sequence,check:hardCheck});
+            }finally{
+              const decision=this.guard.state(id).decisions[previousCount];
+              this.graph.append(id,action,'REVIEW',decision?.verdict??'UNCERTAIN',{reviewerKind,reasonCode:decision?.reviewError??decision?.reasonCode??'REVIEW_UNAVAILABLE',durationMs:performance.now()-reviewStart});
+            }
             gate();
           },
         },
@@ -909,6 +967,7 @@ export class AgentService {
         v.finishedAt = iso();
       });
       this.store.event(id, "STATUS", { status: this.store.agent(id).status });
+      this.graph.finish(id);
     }
   }
   stop(id: string) {

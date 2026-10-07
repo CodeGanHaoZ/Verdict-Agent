@@ -21,6 +21,7 @@
     "scripts/dev/verify-guard.ts",
     "scripts/dev/verify-guard-live.ts",
     "scripts/dev/verify-observability.ts",
-    "scripts/dev/redteam-indirect.ts"
+    "scripts/dev/redteam-indirect.ts",
+    "scripts/dev/record-agent-graph.ts"
   ]
 }

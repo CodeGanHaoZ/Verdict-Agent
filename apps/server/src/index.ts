@@ -82,6 +82,12 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
       const exportRoute=path.match(/^\/api\/guard\/tasks\/([\w-]+)\/decisions\/(\d+)\/export$/);
       if(req.method==='POST' && exportRoute){send(res,200,agents.exportIncident(exportRoute[1],Number(exportRoute[2]),await body(req)));return;}
       if(req.method==='GET' && exportRoute){send(res,200,agents.exportIncident(exportRoute[1],Number(exportRoute[2])));return;}
+      const graphRoute=path.match(/^\/api\/agent\/runs\/([\w-]+)\/graph$/);
+      if(req.method==='GET'&&graphRoute){
+        const after=Number(new URL(req.url!,'http://localhost').searchParams.get('after')??0);
+        if(!Number.isSafeInteger(after)||after<0)throw new ApiError(400,'INVALID_CURSOR');
+        send(res,200,agents.graph.page(graphRoute[1],after));return;
+      }
       const observerRoute=path.match(/^\/api\/agent\/runs\/([\w-]+)\/observability$/);
       if(req.method==='GET'&&observerRoute){agents.store.agent(observerRoute[1]);send(res,200,{...agents.observer.info(),sessionURL:agents.observer.sessionURL(observerRoute[1])});return;}
       const guardRoute=path.match(/^\/api\/guard\/tasks\/([\w-]+)$/);

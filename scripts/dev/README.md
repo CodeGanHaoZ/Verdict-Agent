@@ -36,3 +36,5 @@ setup.mjs 的可选首参数可指定 `.local` 内的隔离输出目录，默认
 行为观测：`obs:install` 固定第三方来源并应用小补丁，`obs:start`／`obs:stop` 管理专用本地进程，`obs:configure -- CONFIG...` 写入可选后端配置，`verify:obs` 运行实际服务／真实验收／看板三视图联调。详见 [接入说明](../../integrations/pi-observability/README.md)。
 
 新间接注入配对集：`npm run redteam:indirect -- check` 校验来源／哈希；显式加载本地 PI 和 reviewer 环境后执行 `scripts/dev/redteam-indirect.ts live [caseId|pair]`。该模式前方和外审均为真实模型，不使用 CI 模型替身；结果与复跑说明见 [新增测试记录](../../docs/21-新增间接注入防御测试.md)。
+
+动作图录制：`graph:record` 用真实本地签名服务和 A 包生成 `fixtures/graph` 的三场景轨迹与哈希 manifest，模型明确标为 TEST_TRANSPORT。`test:graph` 复验图关联、回放及错误边界；重录会更新样本，须审阅后提交。

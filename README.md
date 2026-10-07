@@ -112,3 +112,7 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 ## 新增红队对照
 
 新增 InjecAgent／BIPIA 的 6 攻击＋6 正常对照，真实 GLM 与全 DSF 结果均保留，包括误拦和无结论。复跑入口 `npm run redteam:indirect -- check`；来源、结果与边界见 [测试记录](docs/21-新增间接注入防御测试.md)。
+
+## Agent 活动图
+
+主前端新增 `#activity`：按具体动作展开提议、外审、执行与验收节点，提供三个录制回放 DEMO，也可从任务页查看实时任务。回放不发起任何交付，原始模型来源明确标记。交互、只读 API、数据来源和运行命令见 [活动图说明](docs/22-Agent活动图.md)。

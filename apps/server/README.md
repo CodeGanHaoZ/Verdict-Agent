@@ -28,3 +28,5 @@ PI 可选模块：`agent-service.ts` 提供直接 PI 执行、任务绑定、执
 直接 PI 任务要求独立 `guard` 配置。外审边界、一次性执行许可、安全报告与规则维护命令见 [实现记录](../../docs/20-Verdict-Guard.md)。固定流程与历史草案接口不受此模块保护。
 
 可选 `observability` 配置将新的 PI/Guard 事件投影到本地 Pi Observability，使用持久 outbox；只读状态及链接在 `/api/agent/runs/:id/observability`。见 [安装与边界](../../integrations/pi-observability/README.md)。
+
+只读图接口 `/api/agent/runs/:id/graph?after=0` 输出独立持久化的脱敏阶段记录，支持增量游标及旧任务无记录状态；不依赖观测服务。详见 [活动图](../../docs/22-Agent活动图.md)。
