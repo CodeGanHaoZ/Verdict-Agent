@@ -18,6 +18,7 @@ jobs:
           node-version: 22.23.3
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm run dataset:check
       - run: npm run typecheck
       - run: npm run test:all
       - name: Portable process and Agent tool demo

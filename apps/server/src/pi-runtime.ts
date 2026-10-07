@@ -84,6 +84,8 @@ export async function drivePi(
     api: "openai-completions",
     provider: "verdict-compatible",
     baseUrl: config.baseURL,
+    // Do not send thinking=disabled: the tested ModelArts GLM-5.3 rejects it.
+    // Provider reasoning shares the configured completion-token budget.
     reasoning: false,
     input: ["text"],
     contextWindow: config.contextWindow,
@@ -94,7 +96,13 @@ export async function drivePi(
       cacheRead: 0,
       cacheWrite: 0,
     },
-    compat: { supportsDeveloperRole: false, supportsReasoningEffort: false },
+    compat: {
+      supportsDeveloperRole: false,
+      supportsReasoningEffort: false,
+      ...(config.compatibility === "glm"
+        ? { supportsStore: false, maxTokensField: "max_tokens" as const }
+        : {}),
+    },
   };
   models.setProvider(
     createProvider({

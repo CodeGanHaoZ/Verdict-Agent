@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { digest } from "@verdict/core";
 
@@ -176,7 +182,7 @@ test("new submission clears previous accepted values and interrupted polling res
   await expect(page.locator("#task-fields")).toBeEnabled();
 });
 
-test("PI natural-language draft requires confirmation, then real tools fallback to PASS with separate model status", async ({
+test("PI direct submission runs real tools without a draft and restores on refresh", async ({
   page,
   request,
 }) => {
@@ -191,29 +197,25 @@ test("PI natural-language draft requires confirmation, then real tools fallback 
     .fill(
       `核验 ${meta.capabilities[0].accounts[0]} 在固定检查点 ${meta.contexts[0].trustedBlock.blockHash} 的账户状态。`,
     );
-  await page.getByRole("button", { name: "生成任务草案" }).click();
-  await expect(
-    page.getByRole("heading", { name: "任务草案 · 版本 1" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "确认此版本并执行" }),
-  ).toBeEnabled();
-  await expect(page.locator(".accepted")).toHaveCount(0);
-  await page.getByRole("button", { name: "确认此版本并执行" }).click();
+  await page.getByRole("button", { name: "运行 Agent" }).click();
   await expect(page.getByText("数据已通过本次验收")).toBeVisible();
   await expect(page.locator("#pi-progress")).toContainText("COMPLETED");
   await expect(page.locator("#pi-progress")).toContainText("TEST_TRANSPORT");
   await expect(page.locator(".attempt")).toHaveCount(3);
+  await expect(page.locator("#pi-progress")).toContainText("start_task");
   await expect(page.locator("#pi-progress")).toContainText(
     "request_verified_state",
   );
   await expect(page.locator("#pi-progress")).toContainText("模型费用 未知");
+  await expect(page.locator("#pi-bound")).toContainText(
+    meta.capabilities[0].accounts[0],
+  );
+  await expect(page.locator("#pi-draft")).toHaveCount(0);
   await page.reload();
   await expect(page.getByText("数据已通过本次验收")).toBeVisible();
-  await expect(page.locator("#pi-progress")).toContainText("COMPLETED");
 });
 
-test("PI latest/ambiguous request stays unconfirmed until user supplies and saves explicit conditions", async ({
+test("PI incomplete task stops without data; a new complete task runs directly", async ({
   page,
   request,
 }) => {
@@ -222,26 +224,19 @@ test("PI latest/ambiguous request stays unconfirmed until user supplies and save
   ).json();
   await page.goto("/");
   await page.getByRole("button", { name: "PI Agent · 自然语言" }).click();
-  await expect(
-    page.getByRole("button", { name: "生成任务草案" }),
-  ).toBeEnabled();
   await page.locator("#pi-prompt").fill("帮我检查最新账户状态");
-  await page.getByRole("button", { name: "生成任务草案" }).click();
-  await expect(page.locator(".pi-missing")).toContainText(
-    "不能将最新状态自动替换",
+  await page.getByRole("button", { name: "运行 Agent" }).click();
+  await expect(page.locator("#pi-progress")).toContainText("STOPPED");
+  await expect(page.locator("#pi-progress")).toContainText(
+    "请提供明确账户和固定区块",
   );
-  await expect(
-    page.getByRole("button", { name: "确认此版本并执行" }),
-  ).toBeDisabled();
-  await page.locator("#pi-account").fill(meta.capabilities[0].accounts[0]);
+  await expect(page.locator(".accepted")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "运行 Agent" })).toBeEnabled();
   await page
-    .getByRole("button", { name: "明确选用此配置的固定检查点" })
-    .click();
-  await page.getByRole("button", { name: "保存条件修改" }).click();
-  await expect(
-    page.getByRole("heading", { name: "任务草案 · 版本 2" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "确认此版本并执行" }),
-  ).toBeEnabled();
+    .locator("#pi-prompt")
+    .fill(
+      `核验 ${meta.capabilities[0].accounts[0]} 在固定检查点 ${meta.contexts[0].trustedBlock.blockHash}`,
+    );
+  await page.getByRole("button", { name: "运行 Agent" }).click();
+  await expect(page.getByText("数据已通过本次验收")).toBeVisible();
 });

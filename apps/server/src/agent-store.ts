@@ -10,6 +10,7 @@ export class AgentStore {
     store.db
       .exec(`CREATE TABLE IF NOT EXISTS agent_drafts(id TEXT PRIMARY KEY,client_id TEXT UNIQUE NOT NULL,input_hash TEXT NOT NULL,body TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS agents(id TEXT PRIMARY KEY,body TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS agent_requests(client_id TEXT PRIMARY KEY,input_hash TEXT NOT NULL,agent_id TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS agent_events(agent_id TEXT NOT NULL,sequence INTEGER NOT NULL,body TEXT NOT NULL,PRIMARY KEY(agent_id,sequence));`);
     for (const row of store.db
       .prepare("SELECT body FROM agent_drafts")
@@ -34,6 +35,25 @@ export class AgentStore {
         this.event(a.agentId, "ERROR", { reason: "INTERRUPTED" });
       }
     }
+  }
+  reserveAgent(snapshot: AgentSnapshot, clientId: string, inputHash: string) {
+    return this.store.transaction(() => {
+      const old = this.store.db
+        .prepare(
+          "SELECT input_hash,agent_id FROM agent_requests WHERE client_id=?",
+        )
+        .get(clientId) as { input_hash: string; agent_id: string } | undefined;
+      if (old) {
+        if (old.input_hash !== inputHash)
+          throw new ApiError(409, "AGENT_REQUEST_CONFLICT");
+        return { snapshot: this.agent(old.agent_id), fresh: false };
+      }
+      this.saveAgent(snapshot);
+      this.store.db
+        .prepare("INSERT INTO agent_requests VALUES(?,?,?)")
+        .run(clientId, inputHash, snapshot.agentId);
+      return { snapshot, fresh: true };
+    });
   }
   reserveDraft(draft: AgentDraft, inputHash: string) {
     return this.store.transaction(() => {

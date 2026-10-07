@@ -30,6 +30,7 @@ export const AgentConfigSchema = z.strictObject({
   baseURL: Endpoint,
   modelId: z.string().min(1).max(160),
   apiKeyEnv: z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
+  compatibility: z.enum(["openai", "glm"]).default("openai"),
   source: z.enum(["LIVE", "TEST_TRANSPORT"]).default("LIVE"),
   accountAliases: z
     .record(z.string(), z.string().regex(/^0x[0-9a-f]{40}$/))
@@ -38,7 +39,7 @@ export const AgentConfigSchema = z.strictObject({
   runRequests: z.number().int().min(1).max(8).default(8),
   toolCalls: z.number().int().min(1).max(12).default(12),
   requestTimeoutMs: z.number().int().min(1).max(30000).default(30000),
-  outputTokens: z.number().int().min(64).max(1024).default(1024),
+  outputTokens: z.number().int().min(64).max(8192).default(1024),
   contextWindow: z.number().int().min(4096).max(200000).default(32768),
   maxInputChars: z.number().int().min(1000).max(64000).default(32000),
   maxAttempts: z.number().int().min(1).max(100).default(3),

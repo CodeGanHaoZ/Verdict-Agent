@@ -6,4 +6,4 @@
 
 `npm run test:all` 同时运行 A 原有测试和 B 集成测试。`npm run verify:b` 在实际独立 Node 进程下复跑流程；`npm run observe:b` 是单独的真实网络探测，不被离线测试结果替代。CI 执行离线测试及五进程演示，网络观察不作为稳定 CI 断言。C 的浏览器 e2e 与存证合约仍待实现。
 
-PI 另有 12 项跨包测试：真实 PI SDK 和兼容 HTTP 传输测试替身、无确认无交付、草案版本／幂等、错交付替换、重复／迟到工具、模型限流／超时、预算、取消／重启、独立复验与不可信描述隔离。通过 `npm run test:b` 一并运行，来源显式 TEST_TRANSPORT；真实模型需 `npm run verify:pi` 另验。
+PI 另有 15 项跨包测试：真实 PI SDK 和兼容 HTTP 传输测试替身、直接执行／并发幂等、缺项停止／禁止重绑、GLM 参数兼容及旧草案版本／幂等、错交付替换、重复／迟到工具、模型限流／超时、预算、取消／重启、独立复验与不可信描述隔离。通过 `npm run test:b` 一并运行，来源显式 TEST_TRANSPORT；真实模型需 `npm run verify:pi` 另验。

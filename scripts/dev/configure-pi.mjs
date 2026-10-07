@@ -24,10 +24,18 @@ if (
 if (!/^[A-Z_][A-Z0-9_]*$/.test(apiKeyEnv))
   throw new Error("Invalid key environment variable name");
 const config = JSON.parse(readFileSync(file, "utf8"));
+const compatibility = process.env.VERDICT_PI_COMPAT ?? "openai";
+if (!["openai", "glm"].includes(compatibility))
+  throw new Error("VERDICT_PI_COMPAT must be openai or glm");
+const outputTokens = Number(process.env.VERDICT_PI_OUTPUT_TOKENS ?? 1024);
+if (!Number.isInteger(outputTokens) || outputTokens < 64 || outputTokens > 8192)
+  throw new Error("VERDICT_PI_OUTPUT_TOKENS must be 64..8192");
 config.agent = {
   baseURL,
   modelId,
   apiKeyEnv,
+  compatibility,
+  outputTokens,
   source: "LIVE",
   accountAliases: { weth: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },
   replayTargets: [{ id: "local-two", baseURL: "http://127.0.0.1:3002" }],

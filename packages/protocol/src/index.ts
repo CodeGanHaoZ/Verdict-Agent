@@ -231,6 +231,7 @@ export type AgentToolCall = z.input<typeof AgentToolCallSchema>;
 export type ObservationOrigin = z.infer<typeof ObservationOriginSchema>;
 
 // PI orchestration is mutable application state, never part of the signed evidence schema.
+export const AGENT_API_VERSION = '1.1.0';
 export const AgentErrorSchema = z.enum(['MODEL_NOT_CONFIGURED','MODEL_ERROR','MODEL_RATE_LIMITED','MODEL_TIMEOUT','MODEL_LIMIT','TOOL_LIMIT','TOOL_INVALID','NO_VERIFIED_RESULT','CANCELLED','INTERRUPTED','DRAFT_INVALID','DRAFT_EXPIRED','BUDGET_EXHAUSTED','INTERNAL_ERROR']);
 export const AgentUsageSchema = z.strictObject({ requests:z.number().int().nonnegative(), inputTokens:z.number().nonnegative(), outputTokens:z.number().nonnegative(), cacheReadTokens:z.number().nonnegative(), cacheWriteTokens:z.number().nonnegative(), costUsd:z.number().nonnegative().nullable() });
 export const AgentConditionsSchema = z.strictObject({
@@ -251,7 +252,7 @@ export const AgentDraftSchema = z.strictObject({
   error:AgentErrorSchema.nullable(), agentId:Id.nullable(), createdAt:z.string().datetime(), expiresAt:z.string().datetime(),
 });
 export const AgentSnapshotSchema = z.strictObject({
-  apiVersion:z.literal(API_VERSION), agentId:Id, draftId:Id, runId:Id,
+  apiVersion:z.enum([API_VERSION, AGENT_API_VERSION]), agentId:Id, draftId:Id.nullable(), runId:Id.nullable(),
   status:z.enum(['QUEUED','RUNNING','COMPLETED','STOPPED','ERROR']),
   modelStatus:z.enum(['IDLE','RUNNING','COMPLETED','ERROR','CANCELLED']),
   modelId:Id, modelSource:z.enum(['LIVE','TEST_TRANSPORT']), usage:AgentUsageSchema,
@@ -273,3 +274,6 @@ export type AgentSnapshot=z.infer<typeof AgentSnapshotSchema>;
 export type AgentEvent=z.infer<typeof AgentEventSchema>;
 export type AgentUsage=z.infer<typeof AgentUsageSchema>;
 export type AgentError=z.infer<typeof AgentErrorSchema>;
+
+// Direct PI task submission; execution does not require a draft confirmation.
+export const CreateAgentRunSchema = z.strictObject({clientRequestId:Id,prompt:z.string().trim().min(1).max(6000)});

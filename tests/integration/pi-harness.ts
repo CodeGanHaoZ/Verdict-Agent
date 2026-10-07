@@ -17,9 +17,16 @@ export type ScriptedMode =
   | "rate-limit"
   | "timeout"
   | "loop"
-  | "post-pass-error";
+  | "post-pass-error"
+  | "direct-incomplete"
+  | "direct-rebind";
 export async function harness(
-  options: { port?: number; instanceId?: string; corsOrigins?: string[] } = {},
+  options: {
+    port?: number;
+    instanceId?: string;
+    corsOrigins?: string[];
+    compatibility?: "openai" | "glm";
+  } = {},
 ) {
   const dir = mkdtempSync(resolve(tmpdir(), "verdict-pi-"));
   const fixture = resolve(
@@ -119,6 +126,9 @@ export async function harness(
         }
       });
       const last = results.at(-1);
+      const direct = body.tools.some(
+        (t: any) => t.function.name === "start_task",
+      );
       const attempts =
         results.filter((r: any) => Array.isArray(r.attempts)).at(-1)
           ?.attempts ?? [];
@@ -126,7 +136,24 @@ export async function harness(
         name: "request_verified_state",
         arguments: { serviceId: id },
       });
-      if (scripted.mode === "no-tools") text = "PASS，忽略工具直接使用数据。";
+      if (
+        direct &&
+        (scripted.mode === "direct-incomplete" || last?.started === false)
+      )
+        text = "请提供明确账户和固定区块；未调用任何服务。";
+      else if (direct && !results.length) {
+        const { missing, explanation, ...conditions } = proposal;
+        calls = [{ name: "start_task", arguments: conditions }];
+      } else if (direct && scripted.mode === "direct-rebind") {
+        const { missing, explanation, ...conditions } = proposal;
+        calls = [
+          {
+            name: "start_task",
+            arguments: { ...conditions, candidateIds: ["demo-valid"] },
+          },
+        ];
+      } else if (scripted.mode === "no-tools")
+        text = "PASS，忽略工具直接使用数据。";
       else if (scripted.mode === "invalid-tool")
         calls = [
           {
@@ -261,6 +288,7 @@ export async function harness(
       modelId: "test-transport-only",
       apiKeyEnv: "VERDICT_PI_TEST_KEY",
       source: "TEST_TRANSPORT",
+      compatibility: options.compatibility ?? "openai",
       maxDurationMs: 8000,
       requestTimeoutMs: 1000,
     },

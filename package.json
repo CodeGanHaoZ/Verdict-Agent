@@ -41,7 +41,9 @@
     "web:preview": "npm run preview --workspace @verdict/web",
     "test:e2e": "npm run build && playwright test",
     "pi:configure": "node scripts/dev/configure-pi.mjs",
-    "verify:pi": "node scripts/dev/verify-pi.mjs"
+    "verify:pi": "node scripts/dev/verify-pi.mjs",
+    "verify:pi:local": "npm run build && node --use-env-proxy scripts/dev/verify-pi-local.mjs",
+    "dataset:check": "node scripts/dev/check-agent-dataset.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

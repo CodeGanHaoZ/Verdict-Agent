@@ -26,3 +26,5 @@ Ctrl-C 停止前台进程。不要同时用前台命令和统一脚本占同一�
 跨平台一次验收：`npm run verify:local`（已在 Windows 实测）。`verify-local.mjs` 在新 `.local/verify-local-*` 目录生成配置／密钥，以端口 0 启动实际五个进程并校验 launchId；先跑 B 验收，再跑 Agent 全工具路径。只持有、结束自己的子进程句柄，不依赖 PID 文件和 `/proc`；在 finally 中清理，保留证据。该命令不会运行公共 RPC 探测或链上发布，也不使用现有 `.local/b-demo` 私人配置。
 
 setup.mjs 的可选首参数可指定 `.local` 内的隔离输出目录，默认路径不变，已有文件保留。verify.mjs 的第三个参数可指定运行摘要文件，默认仍是 `.local/b-demo/verification.json`。不要同时让多个进程写同一数据库。
+
+`local-stack.mjs` 复用独立五进程生命周期。`verify:pi:local` 读取显式模型环境，使用同一进程栈运行 [PI 数据集](../../fixtures/agent/README.md)；真实 API 仅由该显式命令访问。`verify:pi` 对已运行的后端评测，均不再生成或确认草案。

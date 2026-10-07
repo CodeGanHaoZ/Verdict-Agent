@@ -1,0 +1,83 @@
+{
+  "datasetVersion": "1.0.0",
+  "ruleVersion": "eth-account-v1",
+  "purpose": "PI orchestration evaluation; not training data or provider reputation",
+  "caseOrigin": "Locally authored scenario prompts and expected outcomes; MIT project license",
+  "taskFixture": "fixtures/core/ethereum-mainnet-26134149/snapshot.json",
+  "caseFile": "cases.json",
+  "caseFileSha256": "045e08bb39d977e1dace221346f1b3a7f4b043cd379df31fd9d64c60eafe99b5",
+  "sources": [
+    {
+      "path": "fixtures/core/ethereum-mainnet-26134149/snapshot.json",
+      "sha256": "faf1fd54c7cf31de91fe11c4e58a655c17c12041c5ea0f6d013cbde0b22d545f",
+      "blockHash": "0xe0743902f44425ff740070d696e93edeba3f6cfb2424a3fd18fb342a61a3df8f",
+      "accounts": [
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "0x6f6e2d636861696e2d73616d706c652d61303031"
+      ],
+      "provenance": "FROZEN_MAINNET_RPC"
+    },
+    {
+      "path": "fixtures/core/mainnet-corpus/12000000.json",
+      "sha256": "293edb88149e5637502935bfa7fba52a460486d5c6128339ef25f8b179102195",
+      "blockHash": "0x3c9c46a46b17361cd1ac3ed3401c9a268095c1810bf991c470c139f8441e1d0b",
+      "accounts": [
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      ],
+      "provenance": "FROZEN_MAINNET_RPC"
+    },
+    {
+      "path": "fixtures/core/mainnet-corpus/14000000.json",
+      "sha256": "077a951d2e8d2fbc9e0f64a062e4c01af05c5d8652cd478c1dc1bf882e936c4f",
+      "blockHash": "0x9bff49171de27924fa958faf7b7ce605c1ff0fdee86f4c0c74239e6ae20d9446",
+      "accounts": [
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      ],
+      "provenance": "FROZEN_MAINNET_RPC"
+    },
+    {
+      "path": "fixtures/core/mainnet-corpus/18000000.json",
+      "sha256": "3450676a0b0099d9e23754729de7ef8fa7ca87d1ac595d4fe0a8e9c76f4fff28",
+      "blockHash": "0x95b198e154acbfc64109dfd22d8224fe927fd8dfdedfae01587674482ba4baf3",
+      "accounts": [
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      ],
+      "provenance": "FROZEN_MAINNET_RPC"
+    },
+    {
+      "path": "fixtures/core/mainnet-corpus/20000000.json",
+      "sha256": "a76b008f77abef86adaa8a11cf94869184cae57a74a3a3f016c834f5c29fa8f7",
+      "blockHash": "0xd24fd73f794058a3807db926d8898c6481e902b7edb91ce0d479d6760f276183",
+      "accounts": [
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      ],
+      "provenance": "FROZEN_MAINNET_RPC"
+    },
+    {
+      "path": "fixtures/core/mainnet-corpus/24000000.json",
+      "sha256": "cce66ded656d7cfacfe34f83038faa2aceb2807b57b16081486445b6af577715",
+      "blockHash": "0x738cc1716ea1f08adac2d4e2230aedcee2d5cd3f65d66d5d3597e05d710a3d50",
+      "accounts": [
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      ],
+      "provenance": "FROZEN_MAINNET_RPC"
+    },
+    {
+      "path": "fixtures/core/mainnet-corpus/26134149.json",
+      "sha256": "8ceb18c8e77b044e6efad8e18c72aa40609e0e024e10ae5f1796638df19846d3",
+      "blockHash": "0xe0743902f44425ff740070d696e93edeba3f6cfb2424a3fd18fb342a61a3df8f",
+      "accounts": [
+        "0x0000000000000000000000000000000000000000",
+        "0x28c6c06298d514db089934071355e5743bf21d60",
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      ],
+      "provenance": "FROZEN_MAINNET_RPC"
+    }
+  ],
+  "boundaries": [
+    "LIVE labels the model transport, not the frozen Ethereum state.",
+    "Faults are injected before local adapter signing; no RPC provider signs these deliveries.",
+    "Expected outcomes are test oracles, never passed to the model as verdicts.",
+    "Model messages and live reports remain under .local; no keys in this dataset."
+  ]
+}

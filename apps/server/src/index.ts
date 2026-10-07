@@ -77,6 +77,10 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
         send(res, 200, agents.info());
         return;
       }
+      if (req.method === "POST" && path === "/api/agent/runs") {
+        send(res, 202, agents.createAgent(await body(req)));
+        return;
+      }
       if (req.method === "POST" && path === "/api/agent/drafts") {
         send(res, 202, agents.createDraft(await body(req)));
         return;

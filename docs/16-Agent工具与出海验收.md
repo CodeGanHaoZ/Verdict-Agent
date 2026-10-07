@@ -87,7 +87,7 @@ sequenceDiagram
 | `replay_evidence` | `{evidenceId,contextId}` | `{replayId}`；重验已有材料 |
 | `get_replay` | `{replayId}` | 重算结果、完整性及报告一致性；COMPLETED 可确认 FAIL |
 
-这是一组宿主无关的函数工具接口，**尚非完整 MCP server**。仓库另有 [PI 编排](15-PI接入与复验.md)，使用五个绑定已确认任务的受限工具，不直接把本节八个宿主接口暴露给模型；同名 find_service／replay_evidence 的参数与授权边界不同。宿主可把本地工具目录适配到其模型工具格式，保留参数验证和确定性采用规则。工具结果、服务文本与证据内容都是数据，不能作为系统指令；大证据包应由宿主在 API 间传递，不必经过模型上下文。
+这是一组宿主无关的函数工具接口，**尚非完整 MCP server**。仓库另有 [PI 编排](15-PI接入与复验.md)，使用 start_task 绑定任务后调用五个受限业务工具，不直接把本节八个宿主接口暴露给模型；同名 find_service／replay_evidence 的参数与授权边界不同。宿主可把本地工具目录适配到其模型工具格式，保留参数验证和确定性采用规则。工具结果、服务文本与证据内容都是数据，不能作为系统指令；大证据包应由宿主在 API 间传递，不必经过模型上下文。
 
 ```ts
 import { guard, AcceptanceStopped } from '@verdict/consumer';
@@ -180,4 +180,4 @@ npm run verify:local
 
 C 可直接使用原 HTTP API 或工具接口；原始 bundle 下载仍使用 `/api/evidence/:id/bundle`。现有 Linux `dev:start/dev:stop` 保留；Windows 使用 `verify:local` 或各进程前台入口。若已有运行后端，可单独执行 `npm run example:tools -- http://127.0.0.1:3001 http://127.0.0.1:3002`。
 
-合并主线后，简易网页、浏览器测试和 PI 编排代码已经接入；真实模型联调仍待本地接口配置。剩余交付：真实锚定 adapter、完整 MCP、真正多地区部署及长时间观测、生产认证／隔离／限额和公开演示链接。当前不存在全球 SLA、厂商事故公告认证、合规认证或主网部署结果。
+合并主线后，简易网页、浏览器测试和 PI 编排代码已经接入；GLM 5.3 真实接口初测已完成，直接执行方式见 [009](decisions/009-direct-pi-agent.md)。剩余交付：真实锚定 adapter、完整 MCP、真正多地区部署及长时间观测、生产认证／隔离／限额和公开演示链接。当前不存在全球 SLA、厂商事故公告认证、合规认证或主网部署结果。

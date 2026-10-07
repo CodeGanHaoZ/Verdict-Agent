@@ -464,3 +464,105 @@ test("failed atomic-consumption commit cannot leak an in-memory PASS as an adopt
     await h.app.engine.releaseManaged(reserved.run.runId);
   }
 });
+
+test("direct PI starts without drafts; concurrent submissions bind once and reuse guarded verification", async () => {
+  h.scripted.mode = "normal";
+  const before = Number(
+    h.app.engine.store.db
+      .prepare("SELECT count(*) AS n FROM agent_drafts")
+      .get()!.n,
+  );
+  const input = {
+    clientRequestId: randomUUID(),
+    prompt: `核验 ${h.proposal.account} 在固定检查点 ${h.proposal.blockHash} 的账户状态。`,
+  };
+  const results = await Promise.all(
+    Array.from({ length: 8 }, () => api("/api/agent/runs", input)),
+  );
+  assert(results.every((r) => r.status === 202));
+  assert.equal(new Set(results.map((r) => r.data.agentId)).size, 1);
+  const a = await waitAgent(results[0].data.agentId);
+  assert.equal(a.draftId, null);
+  assert(a.runId);
+  assert.equal(a.status, "COMPLETED");
+  const run = h.app.engine.store.run(a.runId);
+  assert.deepEqual(
+    run.attempts.map((t) => t.verification?.verdict),
+    ["FAIL", "FAIL", "PASS"],
+  );
+  assert.equal(
+    Number(
+      h.app.engine.store.db
+        .prepare("SELECT count(*) AS n FROM agent_drafts")
+        .get()!.n,
+    ),
+    before,
+  );
+  assert.equal(
+    (await api("/api/agent/runs", { ...input, prompt: "changed" })).status,
+    409,
+  );
+  assert.equal((await api("/api/agent/runs", input)).data.runId, a.runId);
+});
+
+test("direct PI missing conditions, rebinding and cancellation cannot adopt data", async () => {
+  h.scripted.mode = "direct-incomplete";
+  const missing = await api("/api/agent/runs", {
+    clientRequestId: randomUUID(),
+    prompt: "检查最新状态",
+  });
+  const stopped = await waitAgent(missing.data.agentId);
+  assert.equal(stopped.status, "STOPPED");
+  assert.equal(stopped.runId, null);
+  h.scripted.mode = "direct-rebind";
+  const rebound = await api("/api/agent/runs", {
+    clientRequestId: randomUUID(),
+    prompt: `核验 ${h.proposal.account} 在固定检查点 ${h.proposal.blockHash}`,
+  });
+  const failed = await waitAgent(rebound.data.agentId);
+  assert.equal(failed.error, "TOOL_INVALID");
+  assert(failed.runId);
+  assert.equal(h.app.engine.store.run(failed.runId).attempts.length, 0);
+  h.scripted.mode = "timeout";
+  const waiting = await api("/api/agent/runs", {
+    clientRequestId: randomUUID(),
+    prompt: "核验账户",
+  });
+  await api(`/api/agent/runs/${waiting.data.agentId}/stop`, {});
+  const cancelled = await waitAgent(waiting.data.agentId);
+  assert.equal(cancelled.status, "STOPPED");
+  assert.equal(cancelled.runId, null);
+  h.scripted.mode = "normal";
+});
+
+test("GLM transport uses its explicit token field without unsupported thinking switches", async () => {
+  const configured = await harness({ compatibility: "glm" });
+  try {
+    configured.app.engine.config.agent!.outputTokens = 4096;
+    const res = await fetch(configured.base + "/api/agent/runs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        clientRequestId: randomUUID(),
+        prompt: `核验 ${configured.proposal.account} 在固定检查点 ${configured.proposal.blockHash}`,
+      }),
+    });
+    const { agentId } = (await res.json()) as { agentId: string };
+    let a;
+    for (let i = 0; i < 400; i++) {
+      a = configured.app.agents.store.agent(agentId);
+      if (a.finishedAt) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    assert.equal(a!.status, "COMPLETED");
+    assert(configured.scripted.requests.length > 0);
+    for (const r of configured.scripted.requests) {
+      assert.equal(r.max_tokens, 4096);
+      assert.equal(r.max_completion_tokens, undefined);
+      assert.equal(r.thinking, undefined);
+      assert.equal(r.store, undefined);
+    }
+  } finally {
+    await configured.close();
+  }
+});
