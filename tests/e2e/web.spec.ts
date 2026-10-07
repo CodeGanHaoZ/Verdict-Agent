@@ -200,7 +200,7 @@ test("PI direct submission runs real tools without a draft and restores on refre
     );
   await page.getByRole("button", { name: "运行 Agent" }).click();
   // Multi-step PI + independent Guard + real signers may take the full 30s fixture budget.
-  await expect(page.locator("#pi-progress")).toContainText(/COMPLETED|STOPPED|INTERRUPTED/, { timeout: 35000 });
+  await expect(page.locator("#pi-progress > .pi-draft-heading .badge")).toHaveText("COMPLETED", { timeout: 35000 });
   await expect(page.getByText("数据已通过本次验收")).toBeVisible();
   await expect(page.locator("#pi-progress")).toContainText("COMPLETED");
   await expect(page.locator("#pi-progress")).toContainText("TEST_TRANSPORT");
@@ -217,7 +217,7 @@ test("PI direct submission runs real tools without a draft and restores on refre
   await expect(page.locator("#pi-draft")).toHaveCount(0);
   await page.reload();
   // Multi-step PI + independent Guard + real signers may take the full 30s fixture budget.
-  await expect(page.locator("#pi-progress")).toContainText(/COMPLETED|STOPPED|INTERRUPTED/, { timeout: 35000 });
+  await expect(page.locator("#pi-progress > .pi-draft-heading .badge")).toHaveText("COMPLETED", { timeout: 35000 });
   await expect(page.getByText("数据已通过本次验收")).toBeVisible();
 });
 
@@ -233,7 +233,7 @@ test("PI incomplete task stops without data; a new complete task runs directly",
   await page.getByRole("button", { name: "PI Agent · 自然语言" }).click();
   await page.locator("#pi-prompt").fill("帮我检查最新账户状态");
   await page.getByRole("button", { name: "运行 Agent" }).click();
-  await expect(page.locator("#pi-progress")).toContainText("STOPPED", { timeout: 35000 });
+  await expect(page.locator("#pi-progress > .pi-draft-heading .badge")).toHaveText("STOPPED", { timeout: 35000 });
   await expect(page.locator("#pi-progress")).toContainText(
     "请提供明确账户和固定区块",
   );
@@ -246,6 +246,6 @@ test("PI incomplete task stops without data; a new complete task runs directly",
     );
   await page.getByRole("button", { name: "运行 Agent" }).click();
   // Multi-step PI + independent Guard + real signers may take the full 30s fixture budget.
-  await expect(page.locator("#pi-progress")).toContainText(/COMPLETED|STOPPED|INTERRUPTED/, { timeout: 35000 });
+  await expect(page.locator("#pi-progress > .pi-draft-heading .badge")).toHaveText("COMPLETED", { timeout: 35000 });
   await expect(page.getByText("数据已通过本次验收")).toBeVisible();
 });
