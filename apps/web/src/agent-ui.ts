@@ -101,7 +101,7 @@ export function mountAgentUI(
     if (!agent) return;
     const a = agent;
     $("#pi-progress").innerHTML =
-      `<div class="pi-draft-heading"><h3>PI 执行过程</h3><span class="badge neutral">${e(a.status)}</span></div><p class="subtle">模型 ${e(a.modelId)} · ${e(a.modelSource)} · 模型状态 ${e(a.modelStatus)}</p><p class="subtle">模型请求 ${a.usage.requests} 次 · 工具 ${a.toolCalls} 次 · 输入 ${a.usage.inputTokens} / 输出 ${a.usage.outputTokens} tokens · 模型费用 ${a.usage.costUsd === null ? "未知" : a.usage.costUsd.toFixed(6) + " USD"}</p>${a.error ? `<p class="reason">Agent：${e(a.error)}。验收结果保持独立，请查看右侧任务状态。</p>` : ""}${a.explanation ? `<div class="pi-explanation"><span class="tiny-label">模型辅助说明 · 不作为验收结论</span><p>${e(a.explanation)}</p></div>` : ""}<div class="button-row">${["QUEUED", "RUNNING"].includes(a.status) ? '<button class="secondary-button" id="pi-stop">停止 Agent</button>' : ""}<button class="text-button" id="pi-refresh">重新查询此 Agent</button></div><ol class="pi-events">${events
+      `<div class="pi-draft-heading"><h3>PI 执行过程</h3><span class="badge neutral">${e(a.status)}</span></div><p class="subtle">模型 ${e(a.modelId)} · ${e(a.modelSource)} · 模型状态 ${e(a.modelStatus)}</p><p class="subtle">模型请求 ${a.usage.requests} 次 · 工具 ${a.toolCalls} 次 · 输入 ${a.usage.inputTokens} / 输出 ${a.usage.outputTokens} tokens · 模型费用 ${a.usage.costUsd === null ? "未知" : a.usage.costUsd.toFixed(6) + " USD"}</p>${a.error ? `<p class="reason">Agent：${e(a.error)}。验收结果保持独立，请查看右侧任务状态。</p>` : ""}${a.explanation ? `<div class="pi-explanation"><span class="tiny-label">模型辅助说明 · 不作为验收结论</span><p>${e(a.explanation)}</p></div>` : ""}<div class="button-row"><a class="secondary-button" href="#activity?agent=${encodeURIComponent(a.agentId)}">查看动作图 ↗</a>${["QUEUED", "RUNNING"].includes(a.status) ? '<button class="secondary-button" id="pi-stop">停止 Agent</button>' : ""}<button class="text-button" id="pi-refresh">重新查询此 Agent</button></div><ol class="pi-events">${events
         .slice(-100)
         .map(
           (ev) =>
@@ -148,6 +148,16 @@ export function mountAgentUI(
             `执行条件：${run.task.account} · 区块 ${run.task.blockHash} · ${run.task.fields.join(" / ")} · 最多 ${run.task.budget.maxAttempts} 次 · ${run.task.budget.maxCostWei} wei`;
         }
         renderAgent();
+        try{
+          const obs=z.object({enabled:z.boolean(),sessionURL:z.string().nullable(),pending:z.number(),lastError:z.string().nullable()}).parse(await request(primary,`/api/agent/runs/${id}/observability`));
+          if(obs.enabled&&obs.sessionURL){
+            const url=new URL(obs.sessionURL);
+            if(url.protocol==='http:'&&['127.0.0.1','localhost'].includes(url.hostname)){
+              const row=document.createElement('p'),link=document.createElement('a');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='打开 PI 行为时间线';row.append(link,` · 待同步 ${obs.pending} 条${obs.lastError?' · 观测服务暂不可用，业务记录已保留':''}`);$('#pi-progress').prepend(row);
+            }
+          }
+        }catch{}
+
         try {
           const guard=await request(primary, `/api/guard/tasks/${id}`) as {status:string;boundary:unknown;decisions:{sequence:number;verdict:string}[];usage:unknown};
           const section=document.createElement('section');

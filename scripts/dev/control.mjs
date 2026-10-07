@@ -79,6 +79,8 @@ if (process.argv[2] === "stop") {
       const childEnv = { ...process.env, NO_PROXY: noProxy, no_proxy: noProxy };
       const modelKeyEnv = process.env.VERDICT_PI_KEY_ENV ?? "VERDICT_PI_API_KEY";
       if (!data.agent) delete childEnv[modelKeyEnv];
+      if (!data.guard) delete childEnv.VERDICT_GUARD_API_KEY;
+      if (!data.observability) delete childEnv.VERDICT_OBS_TOKEN;
       const child = spawn(
         process.execPath,
         ["--use-env-proxy", file, "--config", config, "--launch-id", launchId],

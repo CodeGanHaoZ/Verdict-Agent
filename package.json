@@ -54,7 +54,15 @@
     "test:guard": "npm run build && tsx --test tests/integration/guard.test.ts",
     "verify:guard": "npm run build && tsx scripts/dev/verify-guard.ts",
     "guard:configure": "npm run build && node scripts/dev/configure-guard.mjs",
-    "verify:guard:live": "tsx scripts/dev/verify-guard-live.ts"
+    "verify:guard:live": "tsx scripts/dev/verify-guard-live.ts",
+    "obs:install": "node scripts/dev/install-observability.mjs",
+    "obs:start": "node scripts/dev/observability-control.mjs start",
+    "obs:stop": "node scripts/dev/observability-control.mjs stop",
+    "obs:configure": "node scripts/dev/observability-control.mjs configure",
+    "verify:obs": "npm run build && tsx scripts/dev/verify-observability.ts",
+    "redteam:indirect": "tsx scripts/dev/redteam-indirect.ts",
+    "graph:record": "npm run build && tsx scripts/dev/record-agent-graph.ts",
+    "test:graph": "npm run build && tsx --test tests/integration/graph*.test.ts"
   },
   "devDependencies": {
     "typescript": "5.9.3",

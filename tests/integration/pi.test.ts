@@ -416,6 +416,17 @@ test("PI evidence tools recompute under independent storage and never promote pr
       ).length === 2,
     );
     assert(second.engine.store.evidenceRows().length > 0);
+    const graph = h.app.agents.graph.page(a.agentId, 0);
+    const replays = graph.events.filter(e => e.tool === 'replay_evidence' && e.phase === 'VERIFICATION' && e.status !== 'RUNNING');
+    assert.equal(replays.length, 2);
+    for (const replay of replays) {
+      assert.equal(replay.status, 'FAIL');
+      assert(replay.evidenceId);
+      assert.equal(graph.events.filter(e => e.actionId === replay.actionId && e.status === 'ADOPTED').length, 0);
+    }
+    const remoteReplay = replays.find(e => e.targetId === 'second')!;
+    assert.equal(remoteReplay.durationMs, undefined); // No remote A timer was returned.
+    assert.equal(graph.events.filter(e => e.actionId === remoteReplay.actionId && e.phase === 'VERIFICATION' && e.status === 'RUNNING').length, 0);
     assert(!JSON.stringify(h.scripted.requests.slice(before)).includes(marker));
     const result = events.find(
       (e) => e.type === "TOOL_END" && e.toolName === "get_evidence_summary",

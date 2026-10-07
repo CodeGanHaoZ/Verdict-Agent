@@ -64,6 +64,12 @@ export const AgentConfigSchema = z.strictObject({
 });
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export const ServerConfigSchema = z.strictObject({
+  observability:z.strictObject({
+    endpoint:z.string().url().refine(value=>{const u=new URL(value);return u.protocol==='http:'&&['127.0.0.1','localhost'].includes(u.hostname)&&u.pathname==='/'&&!u.search&&!u.hash&&!u.username&&!u.password;},'Observer must be a loopback HTTP origin').transform(v=>v.replace(/\/$/,'')),
+    tokenEnv:z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
+    flushMs:z.number().int().min(100).max(10000).default(500),
+    timeoutMs:z.number().int().min(100).max(3000).default(1000),
+  }).optional(),
   agent: AgentConfigSchema.optional(),
   guard: AgentConfigSchema.optional(),
   guardReports: z.strictObject({

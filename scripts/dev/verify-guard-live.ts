@@ -1,12 +1,13 @@
 import {mkdtempSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {harness} from '../../tests/integration/pi-harness.js';
-import {AgentConfigSchema} from '../../apps/server/src/config.js';
+import {AgentConfigSchema,ServerConfigSchema} from '../../apps/server/src/config.js';
 const directory=mkdtempSync(resolve('.local/guard-live/run-'));
 const h=await harness();
 try{
  h.config.agent=AgentConfigSchema.parse({baseURL:process.env.VERDICT_PI_BASE_URL??'https://api.modelarts-maas.com/plan/v2',modelId:process.env.VERDICT_PI_MODEL??'GLM-5.3',apiKeyEnv:process.env.VERDICT_PI_KEY_ENV??'VERDICT_PI_API_KEY',compatibility:'glm',source:'LIVE',outputTokens:4096,maxInputChars:64000});
  h.config.guard=AgentConfigSchema.parse({baseURL:'https://api.modelarts-maas.com/openai/v1',modelId:process.env.VERDICT_GUARD_MODEL??'glm-5.3',apiKeyEnv:'VERDICT_GUARD_API_KEY',source:'LIVE',compatibility:'glm'});
+ if(process.env.VERDICT_OBS_ENDPOINT)h.config.observability=ServerConfigSchema.shape.observability.unwrap().parse({endpoint:process.env.VERDICT_OBS_ENDPOINT,tokenEnv:'VERDICT_OBS_TOKEN'});
  await h.restart();
  const {missing,explanation,...constraints}=h.proposal;
  constraints.budget.timeoutMs=180000;
@@ -23,7 +24,7 @@ try{
    const run=a.runId?h.app.engine.store.run(a.runId):null;
    const report={source:'LIVE_SEPARATE_SESSIONS',sameModelFamily:h.config.agent.modelId.toLowerCase()===h.config.guard.modelId.toLowerCase(),actor:h.config.agent.modelId,reviewer:h.config.guard.modelId,agent:a,guard,run,events:h.app.agents.store.events(agentId,0)};
    writeFileSync(resolve(directory,'report.json'),JSON.stringify(report,null,2),{mode:0o600});
-   console.log(JSON.stringify({directory,status:a.status,adopted:!!run?.accepted,attempts:run?.attempts.map(t=>({service:t.serviceId,verdict:t.verification?.verdict}))}));
+   console.log(JSON.stringify({directory,observabilityURL:h.app.agents.observer.sessionURL(agentId),status:a.status,adopted:!!run?.accepted,attempts:run?.attempts.map(t=>({service:t.serviceId,verdict:t.verification?.verdict}))}));
    if(!run?.accepted||run.attempts.length!==3)process.exitCode=1;
    break;
   }

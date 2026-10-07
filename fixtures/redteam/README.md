@@ -27,3 +27,7 @@ npm run redteam:agent -- live quoted-account-swap
 提示案例把不可信服务引用放在用户任务内，未模拟真正被攻陷的搜索引擎或 MCP 服务。HTTP 攻击只访问脚本启动的本地实例；路径访问和重定向目标使用无秘密的本地 canary，不探测真实凭据或第三方系统。
 
 结果、私有签名材料与证据留在 `.local/redteam-*/` 和 `.local/verify-local-*/`。当前已复现的首次任务绑定缺口尚未修复；结果与修复优先级见 [红队报告](../../docs/19-红队攻击测试.md)。
+
+## 新增 Guard 后的间接注入测试
+
+上面的首次绑定漏洞记录属于 Guard 实现前的历史基线。当前独立审查与硬规则见 `docs/20-Verdict-Guard.md`。新加入 [indirect-v1](indirect-v1/README.md)：InjecAgent 模式改编与 BIPIA 原样短载荷，共 6 个攻击／6 个正常对照；`npm run redteam:indirect -- check` 校验，显式 `live` 使用真实执行模型与真实审查模型，保留模型故障与误报，不复用旧的成功标签。
