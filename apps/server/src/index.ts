@@ -11,6 +11,7 @@ import {
   parse_json_strict,
 } from "@verdict/protocol";
 import { Engine } from "./engine.js";
+import { WalletReviews } from "./wallet.js";
 import { AgentService } from "./agent-service.js";
 import { ApiError } from "./store.js";
 import { type ServerConfig } from "./config.js";
@@ -51,6 +52,7 @@ function send(res: ServerResponse, code: number, data: unknown) {
 export function start_server(config: ServerConfig, launchId = "foreground") {
   const engine = new Engine(config);
   const agents = new AgentService(engine);
+  const wallet = new WalletReviews(engine.store, config);
   let observationJob: Promise<unknown> | null = null;
   const server = createServer(async (req, res) => {
     try {
@@ -73,6 +75,15 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
         return;
       }
       const path = new URL(req.url ?? "/", "http://localhost").pathname;
+      if(req.method==='GET'&&path==='/api/wallet/meta'){send(res,200,wallet.info());return;}
+      if(req.method==='POST'&&path==='/api/wallet/reviews'){send(res,202,wallet.create(await body(req)));return;}
+      const walletRoute=path.match(/^\/api\/wallet\/reviews\/([\w-]+)(?:\/(consume|cancel))?$/);
+      if(walletRoute){
+        const [,id,action]=walletRoute;
+        if(req.method==='GET'&&!action){send(res,200,wallet.get(id));return;}
+        if(req.method==='POST'&&action==='consume'){send(res,200,await wallet.consume(id,await body(req)));return;}
+        if(req.method==='POST'&&action==='cancel'){z.strictObject({}).parse(await body(req));send(res,200,wallet.cancel(id));return;}
+      }
       if(req.method==='POST' && path==='/api/guard/reports/import'){send(res,200,agents.reports.import(await body(req)));return;}
       if(req.method==='GET' && path==='/api/guard/rules'){send(res,200,agents.reports.rules());return;}
       const reportRoute=path.match(/^\/api\/guard\/reports\/(0x[0-9a-f]{64})(?:\/(candidate|replay))?$/);
@@ -303,11 +314,13 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
   return {
     engine,
     agents,
+    wallet,
     server,
     ready,
     close: async () => {
       await new Promise<void>((r) => server.close(() => r()));
       await observationJob;
+      await wallet.close();
       await agents.close();
       await engine.close();
     },

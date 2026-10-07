@@ -17,3 +17,11 @@
 可选 `agent` 配置由 `npm run pi:configure` 生成，包括 baseURL、modelId、apiKeyEnv、调用上限与复验目标。只写环境变量名，真实密钥由服务器进程环境提供。默认初始化仍不自动配置模型。配置字段及真实联调命令见 [PI 说明](../docs/15-PI接入与复验.md)。
 
 PI 默认 requestTimeoutMs=90000、firstEventTimeoutMs=60000、streamIdleTimeoutMs=15000；GLM 配置脚本默认 maxInputChars=64000。三项请求限制叠加，并受任务总预算取消控制。显式旧值保留，更新方式见 [超时适配](../docs/18-模型超时适配与复验.md)。
+
+## 钱包签名前审查（实验入口）
+
+`npm run dev:init` 会在两个本地实例配置中加入可选 `wallet` 段。运行前由操作者在后端进程环境设置 `VERDICT_WALLET_RPC_URL`；该值只接受无认证参数的 HTTPS RPC，或 loopback HTTP，不写入 JSON、浏览器或证据。还必须配置独立 `guard` 审查模型，才能显示可用。
+
+钱包页只支持本页发起的普通原生币转账：浏览器通过 EIP-6963／注入 provider 读取账户和链，服务器检查明确意图、账户／链／收款人／金额／费用、nonce、余额、代码、`eth_call`、`eth_estimateGas`，然后由 PI 读取这些实际检查结果并提交 ALLOW/BLOCK/UNCERTAIN。服务器不持有私钥，也不广播交易；浏览器在一次性、短时许可消费后调用钱包的 `eth_sendTransaction`。账户、链、交易参数或预执行状态变化会使许可失效。
+
+合约调用、ERC-20 授权、permit、批量操作和第三方 DApp 交易暂不放行；预执行通过不保证未来链上状态或合约安全。测试网／主网 RPC、钱包连接和任何交易广播需由操作者自行授权。
