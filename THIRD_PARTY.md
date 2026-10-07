@@ -20,6 +20,6 @@
 
 运行时固定为 Node.js 22.23.3 / npm 10.9.9。开发机从 [Node.js 官方分发目录](https://nodejs.org/dist/v22.23.3/)下载 Linux x64 运行时并核对 SHA-256：`df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de`。本地运行时未提交，其他平台按 .nvmrc 安装对应官方构建。
 
-真实链上样本的采集方法、来源、文件摘要与限制见 [样本说明](fixtures/core/ethereum-mainnet-26134149/README.md)。公开账本事实由 RPC 读取，不是复制第三方代码或商业事故数据集；不声称对外部服务、地址或其标识拥有权利。演示签名由本地临时密钥生成，不是 RPC 厂商签名。
+真实链上样本的采集方法、来源、文件摘要与限制见 [初始样本](fixtures/core/ethereum-mainnet-26134149/README.md) 和 [扩展数据集](fixtures/core/mainnet-corpus/README.md)。公开账本事实由 RPC 读取，不是复制第三方代码或商业事故数据集；不声称对外部服务、地址或其标识拥有权利。演示签名由本地临时密钥生成，不是 RPC 厂商签名。
 
 技术依据：[EIP-1186](https://eips.ethereum.org/EIPS/eip-1186)、[EIP-712](https://eips.ethereum.org/EIPS/eip-712)、[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785)。PI、模型和链上写入未接入。
