@@ -316,7 +316,10 @@ export type RuleCandidate=z.infer<typeof RuleCandidateSchema>;
 
 // Execution graph projections are read-only application records, never signed A evidence.
 export const AgentGraphPhaseSchema=z.enum(['PROPOSAL','REVIEW','EXECUTION','VERIFICATION','OUTCOME','TASK']);
-export const AgentGraphStatusSchema=z.enum(['PENDING','RUNNING','ALLOW','BLOCK','UNCERTAIN','COMPLETED','PASS','FAIL','UNVERIFIABLE','REUSED','ADOPTED','STOPPED','ERROR','CANCELLED','INTERRUPTED','UNKNOWN']);
+export const AgentGraphStatusSchema=z.enum(['PENDING','RUNNING','ALLOW','BLOCK','UNCERTAIN','COMPLETED','PASS','FAIL','UNVERIFIABLE','REUSED','ADOPTED','STOPPED','ERROR','CANCELLED','INTERRUPTED','UNKNOWN','OBSERVED','LOCKED','PASSED','WAITING_SIGNATURE','CONSUMED','BROADCAST','RECEIPT_CONFIRMED','RECEIPT_FAILED','POST_STATE_RECHECKED','SAVED']);
+export const AgentGraphWalletEventTypeSchema=z.enum(['wallet.review.created','wallet.balance.observed','wallet.policy.checked','wallet.preflight.completed','wallet.guard.reviewed','wallet.permit.consumed','wallet.broadcast.reported','wallet.receipt.observed','wallet.post_state.checked','wallet.evidence.saved','wallet.evidence.replayed','wallet.review.stopped']);
+export const AgentGraphWalletStageSchema=z.enum(['WALLET_SESSION','TRANSACTION_INTENT','BALANCE_OBSERVATION','NONCE_OBSERVATION','HARD_RULE','RPC_PREFLIGHT','PI_REVIEW','PERMIT','BROADCAST','RECEIPT','POST_STATE','EVIDENCE','EVIDENCE_REPLAY']);
+export const AgentGraphSourceSchema=z.enum(['USER','WALLET','RPC','DETERMINISTIC','PI']);
 export const AgentGraphEventSchema=z.strictObject({
   graphVersion:z.literal('1.0.0'),eventId:Id,sequence:z.number().int().positive(),at:z.string().datetime(),agentId:Id,runId:Id.nullable(),
   actionId:Id.nullable(),actionOrder:z.number().int().nonnegative(),previousActionId:Id.nullable(),toolCallId:Id.nullable(),
@@ -327,13 +330,25 @@ export const AgentGraphEventSchema=z.strictObject({
   reasonCode:z.string().max(160).optional(),durationMs:z.number().nonnegative().optional(),
   dataVerdict:VerificationResultSchema.shape.dataVerdict.optional(),attributionStatus:VerificationResultSchema.shape.attributionStatus.optional(),
   publicationStatus:PublicationSchema.shape.status.optional(),
+  // Optional wallet projection fields. Existing Agent Graph events remain valid without them.
+  traceId:Id.optional(),walletReviewId:Id.optional(),parentAgentId:Id.optional(),graphRunId:Id.optional(),parentEventId:Id.nullable().optional(),
+  eventType:AgentGraphWalletEventTypeSchema.optional(),timestamp:z.string().datetime().optional(),stage:AgentGraphWalletStageSchema.optional(),
+  source:AgentGraphSourceSchema.optional(),chainId:z.string().min(1).max(80).optional(),blockNumber:z.string().min(1).max(80).optional(),blockHash:HashSchema.optional(),
+  resultDigest:HashSchema.optional(),evidenceRef:HashSchema.optional(),observationKind:z.enum(['RPC_OBSERVATION','RECEIPT_CONFIRMED','POST_STATE_RECHECKED']).optional(),observationSource:z.enum(['LIVE','TEST_TRANSPORT']).optional(),
 });
 export type AgentGraphEvent=z.infer<typeof AgentGraphEventSchema>;
 export const AgentGraphPageSchema=z.strictObject({
   graphVersion:z.literal('1.0.0'),agentId:Id,available:z.boolean(),events:z.array(AgentGraphEventSchema),nextCursor:z.number().int().nonnegative(),hasMore:z.boolean(),
   task:z.strictObject({status:AgentSnapshotSchema.shape.status,modelSource:z.enum(['LIVE','TEST_TRANSPORT']),runId:Id.nullable(),error:AgentErrorSchema.nullable(),finishedAt:z.string().datetime().nullable(),adoptedEvidenceId:HashSchema.nullable()}),
+  walletReviewId:Id.optional(),traceId:Id.optional(),parentAgentId:Id.nullable().optional(),graphRunId:Id.optional(),
+  status:z.string().min(1).max(40).optional(),receiptStatus:z.enum(['NOT_REPORTED','UNKNOWN','SUCCESS','FAIL','REJECTED']).optional(),
 });
 export type AgentGraphPage=z.infer<typeof AgentGraphPageSchema>;
+export const WalletGraphPageSchema=AgentGraphPageSchema.extend({
+  walletReviewId:Id,traceId:Id,parentAgentId:Id.nullable(),graphRunId:Id,
+  status:z.string().min(1).max(40),receiptStatus:z.enum(['NOT_REPORTED','UNKNOWN','SUCCESS','FAIL','REJECTED']),
+});
+export type WalletGraphPage=z.infer<typeof WalletGraphPageSchema>;
 export const AgentGraphRecordingSchema=z.strictObject({
   graphVersion:z.literal('1.0.0'),id:Id,title:z.string(),mode:z.literal('RECORDED'),recordedAt:z.string().datetime(),
   provenance:z.literal('REAL_SIGNED_DEMO_SERVICES_AND_A_KERNEL'),source:z.enum(['LIVE','TEST_TRANSPORT']),page:AgentGraphPageSchema,

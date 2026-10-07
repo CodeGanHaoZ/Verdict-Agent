@@ -1,15 +1,19 @@
 import {randomUUID} from 'node:crypto';
 import {digest} from '@verdict/core';
-import {AgentGraphEventSchema,AgentGraphPageSchema,type AgentGraphEvent,type AgentSnapshot,type AgentGraphPage} from '@verdict/protocol';
+import {AgentGraphEventSchema,AgentGraphPageSchema,WalletGraphPageSchema,type AgentGraphEvent,type AgentSnapshot,type AgentGraphPage,type WalletGraphPage} from '@verdict/protocol';
 import {Store,ApiError} from './store.js';
 import type {ServerConfig} from './config.js';
 type Action=Pick<AgentGraphEvent,'actionId'|'actionOrder'|'previousActionId'|'toolCallId'|'tool'|'serviceId'|'targetId'|'argumentsDigest'|'evidenceId'>;
 type Detail=Partial<Pick<AgentGraphEvent,'reviewerKind'|'attemptId'|'evidenceId'|'reasonCode'|'durationMs'|'dataVerdict'|'attributionStatus'|'publicationStatus'>>;
+type WalletDetail=Partial<Pick<AgentGraphEvent,'argumentsDigest'|'resultDigest'|'evidenceRef'|'chainId'|'blockNumber'|'blockHash'|'reasonCode'|'source'|'observationKind'|'observationSource'>>;
+type WalletMeta={reviewId:string;traceId:string;parentAgentId?:string;graphRunId:string;modelSource:'LIVE'|'TEST_TRANSPORT'};
 export class GraphStore {
   constructor(readonly store:Store,readonly config:ServerConfig){
     store.db.exec(`CREATE TABLE IF NOT EXISTS graph_tasks(agent_id TEXT PRIMARY KEY,seq INTEGER NOT NULL,source TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS graph_actions(agent_id TEXT NOT NULL,action_id TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(agent_id,action_id));
-      CREATE TABLE IF NOT EXISTS graph_events(agent_id TEXT NOT NULL,seq INTEGER NOT NULL,event_key TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(agent_id,seq),UNIQUE(agent_id,event_key));`);
+      CREATE TABLE IF NOT EXISTS graph_events(agent_id TEXT NOT NULL,seq INTEGER NOT NULL,event_key TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(agent_id,seq),UNIQUE(agent_id,event_key));
+      CREATE TABLE IF NOT EXISTS wallet_graph_tasks(review_id TEXT PRIMARY KEY,seq INTEGER NOT NULL,meta TEXT NOT NULL,last_event_id TEXT);
+      CREATE TABLE IF NOT EXISTS wallet_graph_events(review_id TEXT NOT NULL,seq INTEGER NOT NULL,event_key TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(review_id,seq),UNIQUE(review_id,event_key));`);
     // AgentStore and Store have already recovered interrupted work; never resume it.
     for(const row of store.db.prepare('SELECT agent_id FROM graph_tasks').all() as {agent_id:string}[]){
       const a=this.agent(row.agent_id);
@@ -62,6 +66,48 @@ export class GraphStore {
   finish(id:string){
     const a=this.agent(id);const status=a.error==='CANCELLED'?'CANCELLED':a.error==='INTERRUPTED'?'INTERRUPTED':a.status==='COMPLETED'?'COMPLETED':a.status==='ERROR'?'ERROR':'STOPPED';
     this.append(id,null,'TASK',status,a.error?{reasonCode:a.error}:{});
+  }
+  beginWallet(meta:WalletMeta){
+    this.store.transaction(()=>{
+      const old=this.store.db.prepare('SELECT meta FROM wallet_graph_tasks WHERE review_id=?').get(meta.reviewId) as {meta:string}|undefined;
+      if(old){if(old.meta!==JSON.stringify(meta))throw new ApiError(409,'WALLET_TRACE_CONFLICT');return;}
+      this.store.db.prepare('INSERT INTO wallet_graph_tasks(review_id,seq,meta,last_event_id) VALUES(?,0,?,NULL)').run(meta.reviewId,JSON.stringify(meta));
+    });
+  }
+  appendWallet(reviewId:string,eventType:NonNullable<AgentGraphEvent['eventType']>,stage:NonNullable<AgentGraphEvent['stage']>,status:AgentGraphEvent['status'],detail:WalletDetail={}){
+    return this.store.transaction(()=>{
+      const row=this.store.db.prepare('SELECT seq,meta,last_event_id FROM wallet_graph_tasks WHERE review_id=?').get(reviewId) as {seq:number;meta:string;last_event_id:string|null}|undefined;
+      if(!row)return;
+      const meta=JSON.parse(row.meta) as WalletMeta;
+      const eventKey=`${eventType}:${stage}:${status}:${detail.resultDigest??detail.evidenceRef??''}`;
+      const existing=this.store.db.prepare('SELECT body FROM wallet_graph_events WHERE review_id=? AND event_key=?').get(reviewId,eventKey) as {body:string}|undefined;
+      if(existing)return AgentGraphEventSchema.parse(JSON.parse(existing.body));
+      const eventId=randomUUID(),at=new Date().toISOString();
+      const prior=(this.store.db.prepare('SELECT body FROM wallet_graph_events WHERE review_id=? ORDER BY seq').all(reviewId) as {body:string}[]).map(row=>AgentGraphEventSchema.parse(JSON.parse(row.body)));
+      const same=prior.find(e=>e.stage===stage),stages=[...new Set(prior.map(e=>e.stage))];
+      const actionOrder=same?.actionOrder??stages.length+1;
+      const previousActionId=same?same.previousActionId:prior.at(-1)?.actionId??null;
+      const phase:AgentGraphEvent['phase']=stage==='TRANSACTION_INTENT'?'PROPOSAL':stage==='HARD_RULE'||stage==='PI_REVIEW'?'REVIEW':stage==='RECEIPT'||stage==='POST_STATE'||stage==='EVIDENCE_REPLAY'?'VERIFICATION':stage==='EVIDENCE'||stage==='PERMIT'?'OUTCOME':'EXECUTION';
+      const ev=AgentGraphEventSchema.parse({graphVersion:'1.0.0',eventId,sequence:row.seq+1,at,timestamp:at,agentId:meta.parentAgentId??`wallet:${reviewId}`,runId:meta.graphRunId,actionId:digest({reviewId,stage}),actionOrder,previousActionId,toolCallId:null,tool:null,phase,status,modelSource:meta.modelSource,traceId:meta.traceId,walletReviewId:reviewId,parentAgentId:meta.parentAgentId,graphRunId:meta.graphRunId,parentEventId:row.last_event_id,eventType,stage,...detail});
+      this.store.db.prepare('INSERT INTO wallet_graph_events VALUES(?,?,?,?)').run(reviewId,ev.sequence,eventKey,JSON.stringify(ev));
+      this.store.db.prepare('UPDATE wallet_graph_tasks SET seq=?,last_event_id=? WHERE review_id=?').run(ev.sequence,eventId,reviewId);
+      return ev;
+    });
+  }
+  walletPage(reviewId:string,after:number,limit=200):WalletGraphPage{
+    if(!Number.isSafeInteger(after)||after<0||!Number.isSafeInteger(limit)||limit<1||limit>200)throw new ApiError(400,'INVALID_CURSOR');
+    const task=this.store.db.prepare('SELECT seq,meta FROM wallet_graph_tasks WHERE review_id=?').get(reviewId) as {seq:number;meta:string}|undefined;
+    const review=this.store.db.prepare('SELECT body FROM wallet_reviews WHERE id=?').get(reviewId) as {body:string}|undefined;
+    if(!review)throw new ApiError(404,'WALLET_REVIEW_NOT_FOUND');
+    const body=JSON.parse(review.body) as import('@verdict/protocol').WalletReview;
+    const meta=task?JSON.parse(task.meta) as WalletMeta:{reviewId,traceId:body.traceId??reviewId,graphRunId:body.graphRunId??reviewId,parentAgentId:body.parentAgentId,modelSource:body.reviewer.source};
+    const rows=this.store.db.prepare('SELECT body FROM wallet_graph_events WHERE review_id=? AND seq>? ORDER BY seq LIMIT ?').all(reviewId,after,limit+1) as {body:string}[];
+    const events=rows.slice(0,limit).map(r=>AgentGraphEventSchema.parse(JSON.parse(r.body)));
+    const waiting=['QUEUED','REVIEWING','ALLOWED','CONSUMED'].includes(body.status)&&!['SUCCESS','FAIL','REJECTED'].includes(body.receiptReport?.receiptStatus??'');
+    const last=this.store.db.prepare('SELECT body FROM wallet_graph_events WHERE review_id=? ORDER BY seq DESC LIMIT 1').get(reviewId) as {body:string}|undefined;
+    const agentId=meta.parentAgentId??`wallet:${reviewId}`;
+    return WalletGraphPageSchema.parse({graphVersion:'1.0.0',agentId,available:!!task,walletReviewId:reviewId,traceId:meta.traceId,parentAgentId:meta.parentAgentId??null,graphRunId:meta.graphRunId,events,nextCursor:events.at(-1)?.sequence??after,hasMore:rows.length>limit,status:body.status,receiptStatus:body.receiptReport?.receiptStatus??'NOT_REPORTED',
+      task:{status:waiting?'RUNNING':body.receiptReport?.receiptStatus==='SUCCESS'&&body.evidenceRef?'COMPLETED':'STOPPED',modelSource:meta.modelSource,runId:meta.graphRunId,error:null,finishedAt:waiting?null:last?JSON.parse(last.body).at:null,adoptedEvidenceId:null}});
   }
   page(id:string,after:number):AgentGraphPage {
     const a=this.agent(id),task=this.store.db.prepare('SELECT seq FROM graph_tasks WHERE agent_id=?').get(id) as {seq:number}|undefined;
