@@ -6,7 +6,7 @@ import {
 } from "@verdict/protocol";
 import { Store, ApiError } from "./store.js";
 export class AgentStore {
-  constructor(readonly store: Store) {
+  constructor(readonly store: Store,readonly observe?:(event:AgentEvent)=>void) {
     store.db
       .exec(`CREATE TABLE IF NOT EXISTS agent_drafts(id TEXT PRIMARY KEY,client_id TEXT UNIQUE NOT NULL,input_hash TEXT NOT NULL,body TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS agents(id TEXT PRIMARY KEY,body TEXT NOT NULL);
@@ -136,6 +136,7 @@ export class AgentStore {
       this.store.db
         .prepare("INSERT INTO agent_events VALUES(?,?,?)")
         .run(id, ev.sequence, canonical_json(ev));
+      try{this.observe?.(ev);}catch{}
       return ev;
     });
   }

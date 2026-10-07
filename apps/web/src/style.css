@@ -1289,6 +1289,8 @@ dd {
   .sidebar nav {
     display: flex;
     gap: 7px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
   .nav-item {
     width: auto;

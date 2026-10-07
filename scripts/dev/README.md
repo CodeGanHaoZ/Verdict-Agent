@@ -32,3 +32,9 @@ setup.mjs 的可选首参数可指定 `.local` 内的隔离输出目录，默认
 360 异常入口：`npm run test:360`（6 条证据审计＋20 条确定性异常），`npm run verify:360 -- live`（显式真实 PI），`npm run report:360 -- <report.json>` 生成独立分母的指标。没有模型的确定性执行清楚标为 DETERMINISTIC_EXECUTOR。
 
 红队入口：`redteam:check` 校验案例来源／哈希；`redteam:boundaries` 测真实本地 HTTP 和证据边界；`redteam:agent -- controlled|live [caseId]` 区分恶意模型传输与真实模型。发现 BROKEN、TEXT_ONLY_COMPROMISE 或 INCONCLUSIVE 时非零退出，当前范围缺口不加入“全绿”统计。
+
+行为观测：`obs:install` 固定第三方来源并应用小补丁，`obs:start`／`obs:stop` 管理专用本地进程，`obs:configure -- CONFIG...` 写入可选后端配置，`verify:obs` 运行实际服务／真实验收／看板三视图联调。详见 [接入说明](../../integrations/pi-observability/README.md)。
+
+新间接注入配对集：`npm run redteam:indirect -- check` 校验来源／哈希；显式加载本地 PI 和 reviewer 环境后执行 `scripts/dev/redteam-indirect.ts live [caseId|pair]`。该模式前方和外审均为真实模型，不使用 CI 模型替身；结果与复跑说明见 [新增测试记录](../../docs/21-新增间接注入防御测试.md)。
+
+动作图录制：`graph:record` 用真实本地签名服务和 A 包生成 `fixtures/graph` 的三场景轨迹与哈希 manifest，模型明确标为 TEST_TRANSPORT。`test:graph` 复验图关联、回放及错误边界；重录会更新样本，须审阅后提交。

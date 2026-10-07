@@ -21,6 +21,7 @@
 - 原导出路径也支持 POST `{ publicMaterials: [...], acknowledgePublic: true }`，只能分享本任务已审查、摘要一致且不含已知凭据的材料。默认不共享原文；操作者负责先审阅其公开性。
 - `POST /api/guard/reports/:digest/candidate`
 - `GET /api/guard/reports`：公共索引（已导入报告＋本机导出发件箱＋ERC-8004 未接入标注；仅元数据出境），见 [015 决定](decisions/015-guard-report-public-index.md)。
+- `GET /api/guard/exports/:digest`：按签名报告的真实摘要下载已导出的原始包，不会将本机导出视为已独立复验；发件箱使用此接口，已导入报告详情继续使用 `/api/guard/reports/:digest`。
 - `GET /api/guard/tasks`：外审监控台数据源（最近受监 agent 的决定计数、拦截、平均审查等待、用量），见 [017 决定](decisions/017-monitor-and-timeline.md)。
 - `GET /api/guard/rules`
 - `GET /api/guard/tasks/:agentId/telemetry`：活动/决定账本渲染为 pi-telemetry spans（`verdict.guard.review@1`，仅摘要与决定元数据出境）。
@@ -82,6 +83,14 @@ node --env-file=.local/reviewer.env apps/server/dist/main.js --config .local/ins
 以上 CONFIG 路径为示例，使用已有可信配置；两个文件须分别设置端口、dataDir、instanceId、信任配置。前方 `agent` 配置保持独立。使用 Ctrl-C 正常停止；已有 dev:start 管理的进程用 dev:stop，不杀其他进程。`reviewer.env` 仅本地保存、权限 0600，勿提交或粘贴真实值。配置命令只写模型标识与环境变量名称，不读取密钥。
 
 当前直接任务的 `constraints` 是完整 AgentConditions，尚未支持部分字段约束合并。若省略约束，使用独立模型提取；这是模型理解，不是数学证明。
+
+## PR #10 合并审查复验（2026-10-07）
+
+基于主线 `6c5000b` 与 PR `91483e6` 合并，保留活动图、观测和钱包路径，同时接回监控台、威胁账本与 telemetry。修复手机导航溢出、监控台刷新、发件箱摘要／下载路由以及撤销后公共索引仍显示旧复验状态。规则在消费许可时再次检查，活动图按实际模型请求区分硬规则与模型审查。pi-telemetry manifest 和锁文件均固定为 1.0.4。
+
+独立安装依赖后，类型检查通过；A 包 48 项、集成 88 项、浏览器 11 项通过。浏览器新增真实签名报告下载、导入复验和规则候选路径。`redteam:check` 通过，14 项真实本地 HTTP／证据攻击与 6 项 ADVERSARIAL_MODEL_TEST_TRANSPORT 场景均为 RESISTED（其中未知检查点在入口拒收，不计作模型审查）。本轮未重新调用 LIVE 模型，不改变前文真实联调记录或其限制。
+
+本次规则回归只验证源报告范围和少量对照。启用某个值的规则会拒绝随后同值的授权任务，维护者需自行审查适用范围；化名化报告中的值不是原始账户／候选的全局黑名单。
 
 最终回归（本次工作区）：`npm run typecheck` 通过；A 48 项、后端／PI／Guard 63 项通过（其中新增 Guard 19 项）；浏览器 7 项通过。外审测试来源均为 TEST_TRANSPORT，未将其写成真实模型连通。`test:guard` 可单独复跑 Guard 用例，`verify:guard` 生成本地 JSON 指标报告。
 

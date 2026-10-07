@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/disler/pi-agent-observability.git",
+  "commit": "cbb8cc30b9bb2ff1b93a20d4415f72877b019868",
+  "license": "MIT",
+  "bunVersion": "1.3.10"
+}

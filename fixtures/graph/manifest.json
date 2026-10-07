@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "license": "MIT",
+  "producer": "scripts/dev/record-agent-graph.ts",
+  "dataSource": "fixtures/core/ethereum-mainnet-26134149/snapshot.json",
+  "services": "real local HTTP, generated EIP-712 signers, injected faults",
+  "modelSource": "TEST_TRANSPORT",
+  "files": [
+    {
+      "path": "success.json",
+      "sha256": "c676ccced0da2cced7e3834f8d9b0d04f4c8c10f76be9ff04ef777824d129fa8",
+      "events": 17,
+      "status": "COMPLETED"
+    },
+    {
+      "path": "fallback.json",
+      "sha256": "38ed3855e3c0a6f4d6b6422ade40bbda21efb685e90648e893471ab15e6cbfd6",
+      "events": 33,
+      "status": "COMPLETED"
+    },
+    {
+      "path": "blocked.json",
+      "sha256": "2c9c62de97f3682d2bfdd861b62151f905a39b1d44d051638d4f6065c501f4b4",
+      "events": 5,
+      "status": "STOPPED"
+    }
+  ]
+}

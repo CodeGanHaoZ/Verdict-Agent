@@ -113,16 +113,21 @@ export class GuardReports {
   this.store.db.prepare('UPDATE guard_rules SET body=? WHERE id=?').run(JSON.stringify(rule),id);return rule;
  }
  rules(){return (this.store.db.prepare('SELECT body FROM guard_rules').all() as {body:string}[]).map(r=>JSON.parse(r.body));}
+ exported(id:string){
+  const row=this.store.db.prepare("SELECT body FROM guard_exports WHERE json_extract(body,'$.digest')=?").get(id) as {body:string}|undefined;
+  if(!row)throw new ApiError(404,'EXPORTED_REPORT_NOT_FOUND');
+  return SignedSecurityIncidentSchema.parse(JSON.parse(row.body));
+ }
  // Public index (FR-G04): discovery metadata for known and exported reports. Only
  // redacted incident metadata and replay results leave the instance; materials never do.
  list(){
   const reports=(this.store.db.prepare('SELECT id,incident_key,body,result FROM guard_reports').all() as {id:string;incident_key:string;body:string;result:string}[]).map(r=>{
-   const p=SignedSecurityIncidentSchema.parse(JSON.parse(r.body)),replay=JSON.parse(r.result);
+   const p=SignedSecurityIncidentSchema.parse(JSON.parse(r.body)),replay=this.get(r.id).replay;
    return {digest:r.id,incidentKey:r.incident_key,revision:p.incident.revision,reporterId:p.incident.reporterId,action:p.incident.action,status:p.incident.status,replayStatus:replay.status,reason:replay.reason,attribution:replay.attribution,weight:replay.weight,redaction:p.incident.redaction??null,modelId:p.incident.modelId,modelSource:p.incident.modelSource,at:p.incident.at,origin:p.incident.reporterId===this.config.guardReports?.reporterId?'LOCAL':'IMPORTED'};
   }).sort((a,b)=>b.at.localeCompare(a.at));
   const exported=(this.store.db.prepare('SELECT id,body FROM guard_exports').all() as {id:string;body:string}[]).map(r=>{
    const p=SignedSecurityIncidentSchema.parse(JSON.parse(r.body));
-   return {digest:r.id,incidentKey:p.incident.incidentKey,revision:p.incident.revision,reporterId:p.incident.reporterId,action:p.incident.action,status:p.incident.status,at:p.incident.at,modelSource:p.incident.modelSource,redaction:p.incident.redaction??null};
+   return {digest:p.digest,incidentKey:p.incident.incidentKey,revision:p.incident.revision,reporterId:p.incident.reporterId,action:p.incident.action,status:p.incident.status,at:p.incident.at,modelSource:p.incident.modelSource,redaction:p.incident.redaction??null};
   }).sort((a,b)=>b.at.localeCompare(a.at));
   return {reports,exported,erc8004:{status:'NOT_CONNECTED',note:'ERC-8004 feedback 广播未接入；跨实例交换仅限已配置可信报告者的手动导入。'}};
  }

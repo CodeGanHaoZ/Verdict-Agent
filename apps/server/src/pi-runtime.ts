@@ -68,7 +68,7 @@ export type PiCallbacks = {
     name: string,
     data: unknown,
   ) => void;
-  beforeTool: (name: string, args: unknown) => void | Promise<void>;
+  beforeTool: (name: string, args: unknown, toolCallId: string) => void | Promise<void>;
   terminal?: () => boolean;
 };
 export async function drivePi(
@@ -245,7 +245,7 @@ export async function drivePi(
       if (reason || input.signal.aborted)
         return { block: true, reason: reason ?? "CANCELLED", terminate: true };
       try {
-        await input.callbacks.beforeTool(context.toolCall.name, context.args);
+        await input.callbacks.beforeTool(context.toolCall.name, context.args, context.toolCall.id);
       } catch (e) {
         fail(e instanceof AgentFailure ? e.reason : "TOOL_INVALID");
         return { block: true, reason: reason!, terminate: true };

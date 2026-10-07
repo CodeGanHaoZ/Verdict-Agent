@@ -12,7 +12,7 @@
   "dependencies": {
     "@earendil-works/pi-agent-core": "1.0.4",
     "@earendil-works/pi-ai": "1.0.4",
-    "@earendil-works/pi-telemetry": "^1.0.4",
+    "@earendil-works/pi-telemetry": "1.0.4",
     "@verdict/core": "0.1.0",
     "@verdict/evidence": "0.1.0",
     "@verdict/observations": "0.1.0",

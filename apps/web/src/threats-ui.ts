@@ -33,7 +33,7 @@ export function mountThreatsUI() {
       <div class="threat-id"><b class="mono">${e(short(r.digest))}</b><span class="tag">${e(kind)}</span>${r.origin ? `<span class="tag">${e(r.origin)}</span>` : ""}</div>
       <div class="threat-meta">${e(r.action)} · rev ${r.revision} · ${e(short(r.reporterId))} · ${e(time(r.at))}${r.redaction ? ` · ${e(r.redaction)}` : ""}</div>
       <div class="threat-status">${badge(r.replayStatus ?? r.status)}${r.reason ? `<small>${e(r.reason)}</small>` : ""}</div>
-      <div><button class="text-button" data-threat-detail="${e(r.digest)}">详情</button></div>
+      <div><button class="text-button" data-threat-detail="${e(r.digest)}" data-exported="${kind === 'EXPORTED'}">${kind === 'EXPORTED' ? '下载签名报告' : '详情'}</button></div>
     </div>`;
 
   async function load() {
@@ -56,11 +56,25 @@ export function mountThreatsUI() {
       for (const button of list.querySelectorAll<HTMLButtonElement>(
         "[data-threat-detail]",
       ))
-        button.onclick = () => void detailOf(button.dataset.threatDetail!);
+        button.onclick = () => void (button.dataset.exported === 'true'
+          ? downloadExport(button.dataset.threatDetail!)
+          : detailOf(button.dataset.threatDetail!));
     } catch (err) {
       list.innerHTML = `<p class="hint">无法读取公共索引：${e(
         err instanceof Error ? err.message : "未知错误",
       )}</p>`;
+    }
+  }
+
+  async function downloadExport(digest: string) {
+    try {
+      const packet = await request(primary, `/api/guard/exports/${digest}`);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(packet, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url; link.download = `guard-report-${digest}.json`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      detail.textContent = err instanceof Error ? err.message : '签名报告下载失败';
     }
   }
 
@@ -73,7 +87,7 @@ export function mountThreatsUI() {
         `/api/guard/reports/${digest}`,
       ) as { packet: { incident: unknown }; replay: unknown };
       detail.innerHTML = `<h3>报告 ${e(short(digest))}</h3>
-        <details open><summary>化名化 incident（不含 prompt、原文材料或隐私）</summary><pre>${e(JSON.stringify(data.packet.incident, null, 2))}</pre></details>
+        <details open><summary>签名 incident（脱敏范围以 redaction 字段为准）</summary><pre>${e(JSON.stringify(data.packet.incident, null, 2))}</pre></details>
         <details open><summary>本实例独立复验结果</summary><pre>${e(JSON.stringify(data.replay, null, 2))}</pre></details>
         <div class="button-row">
           <button class="secondary-button" id="threat-replay">再次独立复验</button>
@@ -131,5 +145,8 @@ export function mountThreatsUI() {
         err instanceof Error ? err.message : "导入失败：无效的签名报告";
     }
   };
+  window.addEventListener("hashchange", () => {
+    if (location.hash === "#threats") void load();
+  });
   void load();
 }

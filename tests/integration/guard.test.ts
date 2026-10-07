@@ -90,6 +90,10 @@ test('Signed redacted report independently recomputes scope, rejects tamper and 
  assert.equal(target.maintain(candidate.id,'enable').status,'ENABLED');
  const bad=structuredClone(packet);bad.incident.boundary.account=`0x${'4'.repeat(40)}`;assert.throws(()=>target.import(bad),/SIGNATURE_INVALID/);
  const revoked=source.export({...packet.incident,revision:2,status:'REVOKED'});assert.equal(target.import(revoked).status,'REVOKED');assert.equal(target.rules()[0].status,'REVOKED');assert.throws(()=>target.candidate(packet.digest),/REVOKED/);
+ assert.equal(target.list().reports.find(r=>r.digest===packet.digest)?.replayStatus,'REVOKED');
+ const outbox=source.list().exported.find(r=>r.digest===packet.digest);
+ assert.ok(outbox,'outbox must use the signed packet digest, not its internal deduplication key');
+ assert.deepEqual(source.exported(outbox.digest),packet);
  const unknown=new GuardReports(b,{guardReports:{...cfg.guardReports!,trustedReporters:{}}} as ServerConfig);assert.throws(()=>unknown.import(packet),/NOT_TRUSTED/);
  }finally{delete process.env.GUARD_REPORT_TEST_KEY;a.close();b.close();}
 });
@@ -138,6 +142,21 @@ test('One-use permit binds exact arguments and cannot be replayed',async()=>{
   assert.throws(()=>guard.consume('task',sequence,'find_service',{},()=>null,signal));
   assert.equal(guard.state('task').decisions[0].consumed,true);
  }finally{store.close();}
+});
+test('A rule enabled after review invalidates an unconsumed delivery permit',async()=>{
+ const store=new Store(mkdtempSync(join(tmpdir(),'guard-new-rule-'))),guard=new Guard(store),reviewer=await reviewerFixture(conditions),signal=new AbortController().signal;
+ const c={...config,baseURL:reviewer.baseURL,apiKeyEnv:'LATE_RULE_TEST_KEY',requestTimeoutMs:1000,firstEventTimeoutMs:1000};
+ process.env.LATE_RULE_TEST_KEY='test-only';
+ try{
+  await guard.lock('task',c,'test',conditions,{},x=>x as AgentConditions,signal);
+  const args={serviceId:'valid'};
+  const sequence=await guard.authorize('task',c,'request_verified_state',args,()=>null,signal);
+  assert.ok(sequence);
+  store.db.exec('CREATE TABLE guard_rules(id TEXT PRIMARY KEY,body TEXT NOT NULL)');
+  store.db.prepare('INSERT INTO guard_rules VALUES(?,?)').run('late-rule',JSON.stringify({status:'ENABLED',kind:'SCOPE_CANDIDATES',value:'valid'}));
+  assert.throws(()=>guard.consume('task',sequence,'request_verified_state',args,()=>null,signal),/GUARD_STOPPED/);
+  assert.equal(guard.state('task').decisions[0].consumed,false);
+ }finally{delete process.env.LATE_RULE_TEST_KEY;await reviewer.close();store.close();}
 });
 test('Reviewer BLOCK and malformed output stop before execution; stop_task needs no approval',async()=>{
  const store=new Store(mkdtempSync(join(tmpdir(),'guard-review-'))),guard=new Guard(store);
@@ -189,6 +208,9 @@ test('Two HTTP instances exchange a redacted incident and reject tampering',asyn
  for(let n=0;n<100&&!first.app.agents.store.agent(agentId).finishedAt;n++)await new Promise(r=>setTimeout(r,20));
  const response=await fetch(first.base+`/api/guard/tasks/${agentId}/decisions/1/export`);assert.equal(response.status,200);
  const packet=await response.json() as any;
+ const outbox=await (await fetch(first.base+'/api/guard/reports')).json() as any;
+ assert.equal(outbox.exported[0].digest,packet.digest);
+ assert.deepEqual(await (await fetch(first.base+`/api/guard/exports/${packet.digest}`)).json(),packet);
  const serialized=JSON.stringify(packet);assert.ok(!serialized.includes(constraints.account));assert.ok(!serialized.includes('private task'));
  const send=async(body:unknown)=>fetch(second.base+'/api/guard/reports/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
  const imported=await send(packet);assert.equal(imported.status,200);assert.equal((await imported.json() as any).status,'REPRODUCED');
@@ -295,6 +317,7 @@ test('Enabled rule hard-blocks a boundary-clean reported service without model r
   const state=h.app.agents.guard.state(run1.agentId);
   const blocked=state.decisions.at(-1)!;
   assert.equal(blocked.verdict,'BLOCK');assert.equal(blocked.reasonCode,'ENABLED_RULE_SCOPE_CANDIDATES');assert.equal(blocked.consumed,false);
+  assert.equal(h.app.agents.graph.page(a1.agentId,0).events.find(e=>e.reasonCode==='ENABLED_RULE_SCOPE_CANDIDATES')?.reviewerKind,'HARD_RULE');
   // Run 2: revoke the rule (revision 2) and the very same task completes through demo-valid.
   const revokedPacket=h.app.agents.reports.export({version:'guard-incident-v1',reporterId:'self',incidentKey:incident.incidentKey,revision:2,status:'REVOKED',action:'start_task',boundary:boundaryScope,proposed:full,decision:incident.decision,executed:false,materialDigests:[],modelId:'m',modelSource:'TEST_TRANSPORT',at:new Date().toISOString()});
   assert.equal(h.app.agents.reports.import(revokedPacket).status,'REVOKED');

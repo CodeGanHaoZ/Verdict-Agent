@@ -59,6 +59,7 @@ export function reports_consistent(
     canonical_json(normalize(recomputed))
   );
 }
+export type AttemptObserver=(phase:'DELIVERY_STARTED'|'DELIVERY_COMPLETED'|'VERIFICATION_STARTED'|'VERIFICATION_COMPLETED'|'EVIDENCE_SAVED'|'ADOPTED'|'REUSED'|'ATTEMPT_FAILED',attempt:Attempt,durationMs?:number)=>void;
 export class Engine {
   readonly config: ServerConfig;
   readonly store: Store;
@@ -438,17 +439,17 @@ export class Engine {
     if (active?.inFlight) await active.inFlight.catch(() => {});
     this.activeRuns.delete(id);
   }
-  attemptManaged(id: string, serviceId: string): Promise<RunSnapshot> {
+  attemptManaged(id: string, serviceId: string, observer?:AttemptObserver): Promise<RunSnapshot> {
     const active = this.activeRuns.get(id);
     if (!active || active.run.status !== "RUNNING")
       return Promise.reject(new ApiError(409, "RUN_TERMINAL"));
     if (active.inFlight && active.inFlightService === serviceId)
       return active.inFlight;
     const previous = active.run.attempts.find((a) => a.serviceId === serviceId);
-    if (previous) return Promise.resolve(active.run);
+    if (previous) {observer?.('REUSED',previous);return Promise.resolve(active.run);}
     if (active.inFlight)
       return Promise.reject(new ApiError(409, "ATTEMPT_IN_PROGRESS"));
-    const promise = this.performAttempt(active, serviceId).finally(() => {
+    const promise = this.performAttempt(active, serviceId, observer).finally(() => {
       active.inFlight = undefined;
       active.inFlightService = undefined;
     });
@@ -459,8 +460,10 @@ export class Engine {
   private async performAttempt(
     active: NonNullable<ReturnType<typeof this.activeRuns.get>>,
     serviceId: string,
+    observer?:AttemptObserver,
   ): Promise<RunSnapshot> {
     const { run, input, deadline } = active;
+    const emit:AttemptObserver=(...args)=>{try{observer?.(...args);}catch{/* Graph diagnostics cannot rewrite acceptance. */}};
     const choices = await this.candidates(input);
     if (run.status !== "RUNNING" || active.controller.signal.aborted)
       throw new ApiError(409, "RUN_TERMINAL");
@@ -507,6 +510,8 @@ export class Engine {
       );
       observed.response.serviceVersion = service.version;
       try {
+        emit('DELIVERY_STARTED',attempt);
+        const deliveryStart=performance.now();
         const response = await fetch_json(service.endpoint, {
           body: run.task,
           signal: active.controller.signal,
@@ -518,6 +523,7 @@ export class Engine {
             ),
           ),
         });
+        emit('DELIVERY_COMPLETED',attempt,performance.now()-deliveryStart);
         observed.httpStatus = response.httpStatus;
         observed.latencyMs =
           Math.round((performance.now() - start) * 100) / 100;
@@ -528,11 +534,14 @@ export class Engine {
         const context = this.context(run.contextId, "live");
         if (this.store.consumed(run.task.requestId))
           context.consumedRequestIds = [run.task.requestId];
+        emit('VERIFICATION_STARTED',attempt);
+        const verifyStart=performance.now();
         attempt.verification = await verify_delivery(
           run.task,
           delivery,
           context,
         );
+        emit('VERIFICATION_COMPLETED',attempt,performance.now()-verifyStart);
         observed.status =
           delivery.deliveryStatus === "unsupported" ? "UNSUPPORTED" : "OK";
         observed.capability =
@@ -567,6 +576,7 @@ export class Engine {
           context.evaluatedAt,
         );
         attempt.evidenceId = saved.id;
+        emit('EVIDENCE_SAVED',attempt);
         if (performance.now() >= deadline)
           attempt.runtimeReason = "BUDGET_EXHAUSTED";
         if (
@@ -604,6 +614,7 @@ export class Engine {
               ? "INVALID_RESPONSE"
               : e.status;
       }
+      if(attempt.runtimeReason)emit('ATTEMPT_FAILED',attempt);
       attempt.status = "COMPLETED";
       attempt.observationStatus = observed.status;
       attempt.latencyMs = Math.round((performance.now() - start) * 100) / 100;
@@ -613,6 +624,7 @@ export class Engine {
         run.status = "SUCCEEDED";
         run.finishedAt = iso();
         this.store.adopt(run);
+        emit('ADOPTED',attempt);
       } else {
         this.store.saveRun(run);
         if (performance.now() >= deadline)

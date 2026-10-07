@@ -195,5 +195,9 @@ export function mountMonitorUI() {
     }
   }
 
+  $("#refresh-monitor").onclick = () => void load();
+  window.addEventListener("hashchange", () => {
+    if (location.hash === "#monitor") void load();
+  });
   void load();
 }

@@ -2,11 +2,19 @@
 import { harness } from "../integration/pi-harness.ts";
 import { start_server } from "@verdict/server";
 import { resolve } from "node:path";
+import { generateKeyPairSync } from "node:crypto";
 const h = await harness({
   port: 3101,
   instanceId: "browser-one",
   corsOrigins: ["http://127.0.0.1:5174"],
 });
+const reportKeys = generateKeyPairSync('ed25519');
+process.env.GUARD_BROWSER_TEST_SIGNER = reportKeys.privateKey.export({ type:'pkcs8', format:'pem' }).toString();
+h.config.guardReports = {
+  reporterId:'browser-test', signingKeyEnv:'GUARD_BROWSER_TEST_SIGNER',
+  trustedReporters:{'browser-test':reportKeys.publicKey.export({ type:'spki', format:'pem' }).toString()},
+};
+await h.restart();
 const second = start_server({
   ...h.config,
   agent: undefined,

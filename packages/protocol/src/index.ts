@@ -293,9 +293,9 @@ export type ModelRequestTiming=z.infer<typeof ModelRequestTimingSchema>;
 // Guard records are application security records, never A-package evidence.
 export const TaskBoundarySchema = z.strictObject({agentId:Id,version:z.literal(1),conditions:AgentConditionsSchema,source:z.enum(['CALLER','REVIEWER']),promptDigest:HashSchema});
 export type TaskBoundary=z.infer<typeof TaskBoundarySchema>;
-export const GuardDecisionSchema=z.strictObject({sequence:z.number().int().positive(),action:z.string(),argumentsDigest:HashSchema,boundaryDigest:HashSchema,ruleVersion:z.literal('guard-v1'),verdict:z.enum(['ALLOW','BLOCK','UNCERTAIN']),reasonCode:z.string().max(160),consumed:z.boolean(),latencyMs:z.number().nonnegative()});
+export const GuardDecisionSchema=z.strictObject({actionId:Id.optional(),reviewError:AgentErrorSchema.optional(),sequence:z.number().int().positive(),action:z.string(),argumentsDigest:HashSchema,boundaryDigest:HashSchema,ruleVersion:z.literal('guard-v1'),verdict:z.enum(['ALLOW','BLOCK','UNCERTAIN']),reasonCode:z.string().max(160),consumed:z.boolean(),latencyMs:z.number().nonnegative()});
 export type GuardDecision=z.infer<typeof GuardDecisionSchema>;
-export const ActivityRecordSchema=z.strictObject({agentId:Id,sequence:z.number().int().positive(),source:z.enum(['CALLER','ACTOR','EXTERNAL','EXECUTOR']),action:z.string(),argumentsDigest:HashSchema,status:z.enum(['PENDING','BLOCKED','AUTHORIZED','EXECUTED']),resultDigest:HashSchema.optional()});
+export const ActivityRecordSchema=z.strictObject({agentId:Id,actionId:Id.optional(),sequence:z.number().int().positive(),source:z.enum(['CALLER','ACTOR','EXTERNAL','EXECUTOR']),action:z.string(),argumentsDigest:HashSchema,status:z.enum(['PENDING','BLOCKED','AUTHORIZED','EXECUTED']),resultDigest:HashSchema.optional()});
 export type ActivityRecord=z.infer<typeof ActivityRecordSchema>;
 export const SecurityIncidentSchema=z.strictObject({
   version:z.literal('guard-incident-v1'),reporterId:Id,incidentKey:HashSchema,revision:z.number().int().positive(),
@@ -313,3 +313,31 @@ export type SecurityIncident=z.infer<typeof SecurityIncidentSchema>;
 export const SignedSecurityIncidentSchema=z.strictObject({incident:SecurityIncidentSchema,digest:HashSchema,signature:z.string().max(300)});
 export const RuleCandidateSchema=z.strictObject({id:HashSchema,version:z.number().int().positive(),sourceIncident:HashSchema,kind:z.enum(['SCOPE_ACCOUNT','SCOPE_BLOCK','SCOPE_CANDIDATES','SCOPE_BUDGET']),value:z.string().max(120).nullable().default(null),status:z.enum(['CANDIDATE','TESTED','ENABLED','REVOKED']),regression:z.strictObject({attacks:z.number().int().nonnegative(),blocked:z.number().int().nonnegative(),controls:z.number().int().nonnegative(),falseBlocks:z.number().int().nonnegative()}).nullable()});
 export type RuleCandidate=z.infer<typeof RuleCandidateSchema>;
+
+// Execution graph projections are read-only application records, never signed A evidence.
+export const AgentGraphPhaseSchema=z.enum(['PROPOSAL','REVIEW','EXECUTION','VERIFICATION','OUTCOME','TASK']);
+export const AgentGraphStatusSchema=z.enum(['PENDING','RUNNING','ALLOW','BLOCK','UNCERTAIN','COMPLETED','PASS','FAIL','UNVERIFIABLE','REUSED','ADOPTED','STOPPED','ERROR','CANCELLED','INTERRUPTED','UNKNOWN']);
+export const AgentGraphEventSchema=z.strictObject({
+  graphVersion:z.literal('1.0.0'),eventId:Id,sequence:z.number().int().positive(),at:z.string().datetime(),agentId:Id,runId:Id.nullable(),
+  actionId:Id.nullable(),actionOrder:z.number().int().nonnegative(),previousActionId:Id.nullable(),toolCallId:Id.nullable(),
+  tool:z.enum(['start_task','find_service','request_verified_state','get_evidence_summary','replay_evidence','stop_task','external_material','task_boundary']).nullable(),
+  phase:AgentGraphPhaseSchema,status:AgentGraphStatusSchema,modelSource:z.enum(['LIVE','TEST_TRANSPORT']),
+  reviewerKind:z.enum(['MODEL','HARD_RULE','NOT_ENABLED']).optional(),serviceId:Id.optional(),targetId:Id.optional(),
+  argumentsDigest:HashSchema.optional(),attemptId:Id.optional(),evidenceId:HashSchema.optional(),
+  reasonCode:z.string().max(160).optional(),durationMs:z.number().nonnegative().optional(),
+  dataVerdict:VerificationResultSchema.shape.dataVerdict.optional(),attributionStatus:VerificationResultSchema.shape.attributionStatus.optional(),
+  publicationStatus:PublicationSchema.shape.status.optional(),
+});
+export type AgentGraphEvent=z.infer<typeof AgentGraphEventSchema>;
+export const AgentGraphPageSchema=z.strictObject({
+  graphVersion:z.literal('1.0.0'),agentId:Id,available:z.boolean(),events:z.array(AgentGraphEventSchema),nextCursor:z.number().int().nonnegative(),hasMore:z.boolean(),
+  task:z.strictObject({status:AgentSnapshotSchema.shape.status,modelSource:z.enum(['LIVE','TEST_TRANSPORT']),runId:Id.nullable(),error:AgentErrorSchema.nullable(),finishedAt:z.string().datetime().nullable(),adoptedEvidenceId:HashSchema.nullable()}),
+});
+export type AgentGraphPage=z.infer<typeof AgentGraphPageSchema>;
+export const AgentGraphRecordingSchema=z.strictObject({
+  graphVersion:z.literal('1.0.0'),id:Id,title:z.string(),mode:z.literal('RECORDED'),recordedAt:z.string().datetime(),
+  provenance:z.literal('REAL_SIGNED_DEMO_SERVICES_AND_A_KERNEL'),source:z.enum(['LIVE','TEST_TRANSPORT']),page:AgentGraphPageSchema,
+});
+export type AgentGraphRecording=z.infer<typeof AgentGraphRecordingSchema>;
+
+export * from "./wallet.js";
