@@ -15,10 +15,11 @@
     "packages/observations",
     "services/demo",
     "apps/server",
-    "examples/consumer"
+    "examples/consumer",
+    "apps/web"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && npm run build --workspace @verdict/web",
     "test": "npm run build && tsx --test packages/*/test/*.test.ts apps/verifier-cli/test/*.test.ts",
     "verify": "node apps/verifier-cli/dist/index.js",
     "capture:proof": "python3 fixtures/core/capture.py",
@@ -33,12 +34,16 @@
     "demo:service": "node services/demo/dist/main.js",
     "example:b": "node examples/consumer/dist/main.js",
     "observe:b": "node --use-env-proxy scripts/dev/observe.mjs",
-    "verify:b": "node scripts/dev/verify.mjs"
+    "verify:b": "node scripts/dev/verify.mjs",
+    "web": "npm run dev --workspace @verdict/web",
+    "web:preview": "npm run preview --workspace @verdict/web",
+    "test:e2e": "npm run build && playwright test"
   },
   "devDependencies": {
     "typescript": "5.9.3",
     "tsx": "4.23.15",
     "@types/node": "22.19.0",
-    "viem": "2.57.3"
+    "viem": "2.57.3",
+    "@playwright/test": "1.63.0"
   }
 }

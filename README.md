@@ -2,7 +2,7 @@
 
 **Agent 服务验收与证据审计：核对承诺与交付，让判断有据可查。**
 
-首个场景为以太坊指定区块的账户状态。目前 **A 验收内核与 B 后端闭环可运行**：选择服务、签名交付、真实核验、错误替换／停止、证据下载、第二实例重验并改善选择。**C 网页与真实链上存证仍未实现**，发布默认显示 `not_requested`。
+首个场景为以太坊指定区块的账户状态。目前 **A 验收内核与 B 后端闭环可运行**：选择服务、签名交付、真实核验、错误替换／停止、证据下载、第二实例重验并改善选择。**简易网页已接入真实 API；真实链上存证仍未实现**，发布默认显示 `not_requested`。
 
 A 与测试数据已通过 [PR #1](https://github.com/hankesong/Verdict-Agent/pull/1)、[PR #2](https://github.com/hankesong/Verdict-Agent/pull/2) 合入 main；B 本轮代码和实际命令见 [B 实现与复验](docs/13-B包实现与复验.md)。仓库分支／合并状态以 Git 为准。
 
@@ -16,6 +16,7 @@ npm run typecheck
 npm run test:all
 npm run dev:init
 npm run dev:start
+# 另一个终端运行 npm run web，打开 http://127.0.0.1:5173
 npm run example:b -- http://127.0.0.1:3001 fallback
 npm run example:b -- http://127.0.0.1:3001 all-fail
 npm run verify:b
@@ -39,6 +40,12 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 
 测试可离线执行；依赖安装、可选 `capture:proof` 与 `observe:b` 需要网络。信任配置由调用方接受，证据不能自行授权。未独立验证以太坊共识／最终性，第二进程也不等于独立组织背书。
 
+## 简易前端与 Agent 框架
+
+运行 `npm run web` 打开 [验收工作台](http://127.0.0.1:5173)：提交任务、查看错误替换与逐项检查、浏览服务观测、下载证据、发起第二实例复验和比较历史证据排序。网页使用 TypeScript + Vite，详见 [前端说明](apps/web/README.md)。
+
+底层是自建的 Node.js/TypeScript **确定性任务编排器**，结合 A 验收内核、证据包及 SQLite。**尚未接入 PI、大模型或其他 Agent 框架**；后续模型只能调用工具和解释，不能代替验签／证明或改变 verdict。见 [实现边界](docs/14-简易前端.md)。
+
 ## 已完成
 
 | 模块 | 实际能力 |
@@ -50,6 +57,7 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 | B 存储与复验 | SQLite 索引、原始证据下载、重新核验后导入；篡改／UI_MOCK 拒绝；独立配置与存储的第二后端；适用性及事实去重 |
 | B 真实观测 | 两家公共 RPC 的近期与历史探测；LIVE、FROZEN、FAULT_INJECTION 分组；不支持、429、超时、HTTP 错误分开 |
 | B 发布边界 | 与 verdict 分离的状态与原子队列；默认未接入，测试失败／幂等重试已验证，无伪造链上成功 |
+| 简易前端 | 三个实际 API 视图、逐项审计、停止路径、原文件下载、独立复验与真实排序对照；5 条浏览器测试通过 |
 | 验证与接力 | A 48 项＋B 22 项离线测试、类型检查、实际五进程演示；最小消费示例和 CI 工作流（远端 CI 结果另看运行记录） |
 
 本轮真实观测为 12 个样本：10 OK、1 HTTP 403、1 范围／参数不支持。具体区块、来源、时间与限制见 [运行记录](docs/13-B包实现与复验.md)。这些结果只代表那次采样，不是提供商 SLA 或已验数据承诺。
@@ -58,15 +66,15 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 
 | 状态 | 工作 | 入口／责任 |
 | --- | --- | --- |
-| 未实现，下一步优先 | 服务选择、单次审计、证据复验三个网页视图；直接消费 B 的真实 API 与 checks，不在前端硬编码 verdict | `apps/web/`，C；[C 工作包](docs/work-packages/C-审计界面与存证.md) |
+| 已有简易版，待完善 | 三个真实 API 视图已可运行；历史任务检索、文件上传导入与更完整交互仍可接力 | `apps/web/`，C；[前端说明](docs/14-简易前端.md) |
 | 未实现 | C 的存证 adapter、最小合约与本地链测试；无部署地址、真实交易回执或链上确认 | `packages/anchor-client/`、`contracts/evidence-anchor/`，C |
-| 未实现 | B/C 浏览器端到端测试、完整可交互演示、视频、公开运行链接与赛事提交材料 | `tests/e2e/`、`docs/demo/`，C 统筹 |
+| 部分完成 | B/C 浏览器端到端测试已运行；完整赛事演示、视频、公开运行链接与提交材料仍待补 | `tests/e2e/`、`docs/demo/`，C 统筹 |
 | 后续工程 | 公众多租户认证、分布式任务队列、分页／归档、生产部署、更广的动态签名服务适配 | B 后续；当前仅本地单写者、少量服务联调 |
 | 待补覆盖 | 精确分叉边界、特殊账户与更多 Trie 向量 | A；[数据待补清单](docs/12-测试数据来源与覆盖.md) |
 
 模型／PI、完整 SDK/MCP、ERC-8004 身份反馈、支付、复杂信誉／抗女巫聚合、其他任务类型及主网部署仍属后续范围。正式上链交易、网络和费用需具体授权。DAO、反事实调查等候选不混入当前验收审计实现。
 
-C 可从 `GET /api/meta` 获取配置入口，`GET /api/services` 获取目录，`POST /api/runs` 提交任务并轮询快照，下载证据后创建复验任务；默认 CORS 允许 localhost/127.0.0.1:5173。API 与原子性约定见 [接口](docs/08-接口约定.md)。沿用唯一 npm workspace 和锁文件，不重写 A 内核、不另起初始化工程。
+简易前端已从 `GET /api/meta` 获取配置入口，`GET /api/services` 获取目录，`POST /api/runs` 提交任务并轮询快照，下载证据后创建复验任务；默认 CORS 允许 localhost/127.0.0.1:5173。后续接入可沿用这些 API。API 与原子性约定见 [接口](docs/08-接口约定.md)。沿用唯一 npm workspace 和锁文件，不重写 A 内核、不另起初始化工程。
 
 ## 文档与贡献
 
