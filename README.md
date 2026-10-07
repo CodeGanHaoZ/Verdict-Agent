@@ -101,6 +101,8 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 
 仓库公开，欢迎查看、Fork、Issue 和 PR；按 [CONTRIBUTING](CONTRIBUTING.md) 与模块规则协作，保留他人的工作。私钥和未审阅运行材料不进版本库。自有代码采用 [MIT](LICENSE)，依赖见 [THIRD_PARTY](THIRD_PARTY.md)。
 
+贡献者：[@CodeGanHaoZ](https://github.com/CodeGanHaoZ) 在 [PR #10](https://github.com/hankesong/Verdict-Agent/pull/10) 贡献了外审产品设计、结构化范围约束、telemetry 适配、规则增强、监控台与威胁账本。完整贡献历史见 [Contributors](https://github.com/hankesong/Verdict-Agent/graphs/contributors)。
+
 ## Verdict Guard（开发中）
 
 已接入独立任务边界、PI 执行前外审与范围硬拦截；未配置 `guard` 时直接 PI 入口不可用，固定流程仍可运行且未启用外审。安全报告／规则 API 与本地维护命令已加入。GLM 5.3＋DeepSeek 曾完成真实替换验收；最新按用户选择改为 GLM 5.3 执行与独立 GLM 5.3 行为外审，同模型首次联调在第三次审查时耗尽 180 秒预算，尚未完成替换；语义复验仅为独立模型判断，规则启用使用本地维护命令，见 [实现与限制](docs/20-Verdict-Guard.md)。
