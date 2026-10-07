@@ -14,6 +14,8 @@
 | jsonc-parser | 3.3.1 | MIT | [jsonc-parser](https://github.com/microsoft/node-jsonc-parser)：JSON 语法树，用于拒绝重复键和非严格 JSON |
 | TypeScript | 5.9.3 | Apache-2.0 | [TypeScript](https://github.com/microsoft/TypeScript)：构建与类型检查 |
 | tsx | 4.23.15 | MIT | [tsx](https://github.com/privatenumber/tsx)：测试与样本工具运行 |
+| Vite | 7.3.7 | MIT | [Vite](https://github.com/vitejs/vite)：本地网页构建与开发服务器 |
+| @playwright/test | 1.63.0 | Apache-2.0 | [Playwright](https://github.com/microsoft/playwright)：真实浏览器集成测试 |
 | @types/node | 22.19.0 | MIT | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped)：Node 类型 |
 
 许可证按本次实际安装的 package.json 核对；依赖自身的许可文本随包分发。若以后修改或再分发依赖源码，按该依赖的许可证保留通知及相应源码要求。
