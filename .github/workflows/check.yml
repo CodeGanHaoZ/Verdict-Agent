@@ -30,5 +30,13 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Browser integration
         run: npm run test:e2e
+      - name: Preserve browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failures-${{ matrix.os }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
       - if: always() && runner.os == 'Linux'
         run: npm run dev:stop
