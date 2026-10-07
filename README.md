@@ -1,14 +1,27 @@
 # Verdict Agent
 
-**Agent 服务验收与证据审计：核对承诺与交付，让判断有据可查。**
+**Agent 服务验收层：先约定交付要求，逐项验收；不合格就换服务，留下可下载、重跑和引用的证据。**
 
 首个场景为以太坊指定区块的账户状态。目前 **A 验收内核与 B 后端闭环可运行**：选择服务、签名交付、真实核验、错误替换／停止、证据下载、第二实例重验并改善选择。**C 网页与真实链上存证仍未实现**，发布默认显示 `not_requested`。
 
 A 与测试数据已通过 [PR #1](https://github.com/hankesong/Verdict-Agent/pull/1)、[PR #2](https://github.com/hankesong/Verdict-Agent/pull/2) 合入 main；B 本轮代码和实际命令见 [B 实现与复验](docs/13-B包实现与复验.md)。仓库分支／合并状态以 Git 为准。
 
+新增 [Agent 工具、出海场景、架构与覆盖检查](docs/14-Agent工具与出海验收.md)：八个函数工具及消费端 `guard` 复用实际内核；出海服务商可以用同一验收层控制陌生数据服务风险。地区／网络仅是可用性观测来源，不影响密码学验收。历史材料帮助选择，每次新交付仍须验收。
+
 ## 运行与复验
 
 使用 `.nvmrc` 指定的 **Node 22.23.3 / npm 10.9.9**，在仓库根目录运行：
+
+Windows 或首次验收可直接执行下列命令，自动启动并结束本次五个进程、使用临时端口、保留独立证据（已在 Windows 实测）：
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+npm run test:all
+npm run verify:local
+```
+
+Linux 持续演示与可选公共 RPC 观测：
 
 ```bash
 npm ci --ignore-scripts
@@ -50,7 +63,8 @@ npm run verify -- .local/a-demo/bundle.json --context .local/a-demo/trusted-cont
 | B 存储与复验 | SQLite 索引、原始证据下载、重新核验后导入；篡改／UI_MOCK 拒绝；独立配置与存储的第二后端；适用性及事实去重 |
 | B 真实观测 | 两家公共 RPC 的近期与历史探测；LIVE、FROZEN、FAULT_INJECTION 分组；不支持、429、超时、HTTP 错误分开 |
 | B 发布边界 | 与 verdict 分离的状态与原子队列；默认未接入，测试失败／幂等重试已验证，无伪造链上成功 |
-| 验证与接力 | A 48 项＋B 22 项离线测试、类型检查、实际五进程演示；最小消费示例和 CI 工作流（远端 CI 结果另看运行记录） |
+| B Agent 工具 | 严格工具参数、候选／验收／下载／导入／复验；`guard` 只交付本次 accepted 值，失败停止业务依赖 |
+| 验证与接力 | A 48 项＋B 26 项离线测试、类型检查、实际五进程演示；函数工具示例、Windows 脚本和双平台 CI（远端结果另看 Actions） |
 
 本轮真实观测为 12 个样本：10 OK、1 HTTP 403、1 范围／参数不支持。具体区块、来源、时间与限制见 [运行记录](docs/13-B包实现与复验.md)。这些结果只代表那次采样，不是提供商 SLA 或已验数据承诺。
 

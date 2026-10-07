@@ -33,7 +33,9 @@
     "demo:service": "node services/demo/dist/main.js",
     "example:b": "node examples/consumer/dist/main.js",
     "observe:b": "node --use-env-proxy scripts/dev/observe.mjs",
-    "verify:b": "node scripts/dev/verify.mjs"
+    "verify:b": "node scripts/dev/verify.mjs",
+    "example:tools": "node examples/consumer/dist/tools-main.js",
+    "verify:local": "npm run build && node scripts/dev/verify-local.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

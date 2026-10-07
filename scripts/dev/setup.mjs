@@ -1,9 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const root = process.cwd();
-const base = resolve(root, ".local/b-demo");
+const base = resolve(root, process.argv[2] ?? ".local/b-demo");
+const relativeBase = relative(resolve(root, ".local"), base);
+if (relativeBase.startsWith("..") || isAbsolute(relativeBase))
+  throw new Error("Demo configuration directory must be within .local");
 mkdirSync(base, { recursive: true, mode: 0o700 });
 const fixture = resolve(
   root,
@@ -125,7 +128,7 @@ for (const [index, instanceId] of ["local-one", "local-two"].entries()) {
     instanceId,
     host: "127.0.0.1",
     port: 3001 + index,
-    dataDir: resolve(root, ".local/instances", instanceId),
+    dataDir: process.argv[2] ? resolve(base, "instances", instanceId) : resolve(root, ".local/instances", instanceId),
     corsOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
     historyMaxAgeMs: 86400000,
     publicationAdapter: "not_configured",
@@ -134,7 +137,7 @@ for (const [index, instanceId] of ["local-one", "local-two"].entries()) {
   });
 }
 console.log(
-  "Local keys and two independent operator configurations are ready in .local/b-demo (existing files preserved).",
+  `Local keys and two independent operator configurations are ready in ${base} (existing files preserved).`,
 );
 console.log(
   "Review checkpoint and key bindings before use. No consensus, provider identity or chain publication is implied.",

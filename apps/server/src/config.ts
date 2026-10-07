@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { z } from "zod";
 import {
   CapabilitiesSchema,
+  ObservationOriginSchema,
   DecimalSchema,
   ProvenanceModeSchema,
   VerificationContextSchema,
@@ -30,6 +31,7 @@ export const ServerConfigSchema = z.strictObject({
   host: z.literal("127.0.0.1").default("127.0.0.1"),
   port: z.number().int().min(0).max(65535),
   dataDir: z.string(),
+  rpcObservationOrigin: ObservationOriginSchema.nullable().default(null),
   corsOrigins: z
     .array(
       z

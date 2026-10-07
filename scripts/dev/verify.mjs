@@ -127,7 +127,7 @@ const summary = {
 };
 mkdirSync(".local/b-demo", { recursive: true });
 writeFileSync(
-  ".local/b-demo/verification.json",
+  process.argv[4] ?? ".local/b-demo/verification.json",
   JSON.stringify(summary, null, 2),
 );
 console.log(JSON.stringify(summary, null, 2));

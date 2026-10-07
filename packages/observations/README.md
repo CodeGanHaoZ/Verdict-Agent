@@ -11,3 +11,5 @@ npm run observe:b  # 需已启动后端；输出与 SQLite 记录均来自实际
 指标按 LIVE/FROZEN/FAULT_INJECTION、方法及区块分组，窗口为最近 24 小时。超时无响应延迟，不计零延迟。验收计数来自本机实际任务尝试，导入记录不增加调用成功数。原始响应不全部入库，仅留安全摘要；不把单方超时观察当作可归属反证。并非穷举服务历史范围，少量样本不能外推 SLA。
 
 测试通过受控 HTTP 端点验证分类（不写公共观测索引）；真实网络结果独立保存在 `.local/b-demo/live-observations.json`，见 [本轮记录](../../docs/13-B包实现与复验.md)。
+
+`probe_rpc` 可接收 `origin`（observerId、region、networkProfile、OPERATOR_CONFIGURED），后端只能从 `rpcObservationOrigin` 配置传入。未配置时省略，不猜测地区。指标额外按这三个来源字段分组，避免混合地区／网络；旧记录仍可解析。来源是操作者声明，不是地域认证或多地区实测结论，correctness 仍为 NOT_CHECKED；签名证据格式未变。
