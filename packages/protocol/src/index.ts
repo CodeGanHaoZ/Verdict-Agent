@@ -129,7 +129,7 @@ export type ReplayResult = z.infer<typeof ReplayResultSchema>;
 export const API_VERSION = '1.0.0';
 export const ObservationStatusSchema = z.enum(['OK', 'UNSUPPORTED', 'RATE_LIMITED', 'TIMEOUT', 'ERROR', 'INVALID_RESPONSE']);
 export const CapabilityStatusSchema = z.enum(['SUPPORTED', 'UNSUPPORTED', 'UNKNOWN']);
-export const RuntimeReasonSchema = z.enum([...ReasonCodeSchema.options, 'NETWORK_ERROR', 'INVALID_RESPONSE', 'SERVICE_ID_MISMATCH', 'COST_UNKNOWN', 'INTERRUPTED', 'INTERNAL_ERROR', 'CONTEXT_UNAVAILABLE']);
+export const RuntimeReasonSchema = z.enum([...ReasonCodeSchema.options, 'NETWORK_ERROR', 'INVALID_RESPONSE', 'SERVICE_ID_MISMATCH', 'COST_UNKNOWN', 'INTERRUPTED', 'INTERNAL_ERROR', 'CONTEXT_UNAVAILABLE', 'AGENT_STOPPED', 'AGENT_ERROR', 'CANCELLED']);
 export const CapabilitiesSchema = z.strictObject({
   dataChainIds: z.array(DecimalSchema).nullable(), blockHashes: z.array(HashSchema).nullable(),
   accounts: z.array(AddressSchema).nullable(), fields: z.array(FieldSchema),
@@ -197,3 +197,47 @@ export type CreateRun = z.infer<typeof CreateRunSchema>;
 export type ReplaySnapshot = z.infer<typeof ReplaySnapshotSchema>;
 export type Publication = z.infer<typeof PublicationSchema>;
 export type RuntimeReason = z.infer<typeof RuntimeReasonSchema>;
+
+// PI orchestration is mutable application state, never part of the signed evidence schema.
+export const AgentErrorSchema = z.enum(['MODEL_NOT_CONFIGURED','MODEL_ERROR','MODEL_RATE_LIMITED','MODEL_TIMEOUT','MODEL_LIMIT','TOOL_LIMIT','TOOL_INVALID','NO_VERIFIED_RESULT','CANCELLED','INTERRUPTED','DRAFT_INVALID','DRAFT_EXPIRED','BUDGET_EXHAUSTED','INTERNAL_ERROR']);
+export const AgentUsageSchema = z.strictObject({ requests:z.number().int().nonnegative(), inputTokens:z.number().nonnegative(), outputTokens:z.number().nonnegative(), cacheReadTokens:z.number().nonnegative(), cacheWriteTokens:z.number().nonnegative(), costUsd:z.number().nonnegative().nullable() });
+export const AgentConditionsSchema = z.strictObject({
+  contextId:Id, account:AddressSchema, blockHash:HashSchema,
+  fields:TaskSpecSchema.shape.fields, candidateIds:z.array(Id).min(1).max(32),
+  useHistoricalEvidence:z.boolean(), budget:TaskSpecSchema.shape.budget,
+});
+export const AgentProposalSchema = z.strictObject({
+  contextId:Id.nullable(), account:AddressSchema.nullable(), blockHash:HashSchema.nullable(),
+  fields:TaskSpecSchema.shape.fields, candidateIds:z.array(Id).min(1).max(32),
+  useHistoricalEvidence:z.boolean(), budget:TaskSpecSchema.shape.budget,
+  missing:z.array(z.string().max(300)).max(12), explanation:z.string().max(3000),
+});
+export const AgentDraftSchema = z.strictObject({
+  apiVersion:z.literal(API_VERSION), draftId:Id, clientRequestId:Id, version:z.number().int().positive(),
+  status:z.enum(['GENERATING','READY','NEEDS_INPUT','CONFIRMED','ERROR','EXPIRED']),
+  prompt:z.string().min(1).max(6000), proposal:AgentProposalSchema.nullable(), usage:AgentUsageSchema,
+  error:AgentErrorSchema.nullable(), agentId:Id.nullable(), createdAt:z.string().datetime(), expiresAt:z.string().datetime(),
+});
+export const AgentSnapshotSchema = z.strictObject({
+  apiVersion:z.literal(API_VERSION), agentId:Id, draftId:Id, runId:Id,
+  status:z.enum(['QUEUED','RUNNING','COMPLETED','STOPPED','ERROR']),
+  modelStatus:z.enum(['IDLE','RUNNING','COMPLETED','ERROR','CANCELLED']),
+  modelId:Id, modelSource:z.enum(['LIVE','TEST_TRANSPORT']), usage:AgentUsageSchema,
+  toolCalls:z.number().int().nonnegative(), error:AgentErrorSchema.nullable(), explanation:z.string().max(6000),
+  eventSequence:z.number().int().nonnegative(), createdAt:z.string().datetime(), finishedAt:z.string().datetime().nullable(),
+});
+export const AgentEventSchema = z.strictObject({
+  agentId:Id, sequence:z.number().int().positive(), at:z.string().datetime(),
+  type:z.enum(['STATUS','MODEL_REQUEST','ASSISTANT_TEXT','TOOL_START','TOOL_END','ERROR']),
+  toolName:z.string().optional(), toolCallId:z.string().optional(), data:z.unknown(),
+});
+export const CreateAgentDraftSchema=z.strictObject({clientRequestId:Id,prompt:z.string().trim().min(1).max(6000)});
+export const UpdateAgentDraftSchema=z.strictObject({version:z.number().int().positive(),conditions:AgentConditionsSchema});
+export const ConfirmAgentDraftSchema=z.strictObject({version:z.number().int().positive()});
+export type AgentConditions=z.infer<typeof AgentConditionsSchema>;
+export type AgentProposal=z.infer<typeof AgentProposalSchema>;
+export type AgentDraft=z.infer<typeof AgentDraftSchema>;
+export type AgentSnapshot=z.infer<typeof AgentSnapshotSchema>;
+export type AgentEvent=z.infer<typeof AgentEventSchema>;
+export type AgentUsage=z.infer<typeof AgentUsageSchema>;
+export type AgentError=z.infer<typeof AgentErrorSchema>;

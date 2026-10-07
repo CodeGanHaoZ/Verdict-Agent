@@ -363,7 +363,18 @@ export class Engine {
       );
     return candidates;
   }
-  createRun(raw: unknown): { runId: string; duplicate: boolean } {
+  private activeRuns = new Map<
+    string,
+    {
+      run: RunSnapshot;
+      input: CreateRun;
+      deadline: number;
+      controller: AbortController;
+      inFlight?: Promise<RunSnapshot>;
+      inFlightService?: string;
+    }
+  >();
+  reserveRun(raw: unknown) {
     const input = CreateRunSchema.parse(raw);
     this.validate(input);
     if (this.shuttingDown) throw new ApiError(503, "SHUTTING_DOWN");
@@ -383,204 +394,281 @@ export class Engine {
       startedAt: null,
       finishedAt: null,
     };
-    const reserved = this.store.reserveRun(digest(input), initial);
+    return this.store.reserveRun(digest(input), initial);
+  }
+  createRun(raw: unknown): { runId: string; duplicate: boolean } {
+    const input = CreateRunSchema.parse(raw);
+    const reserved = this.reserveRun(input);
     if (reserved.fresh) this.schedule(this.execute(reserved.run.runId, input));
     return { runId: reserved.run.runId, duplicate: !reserved.fresh };
   }
-  private async execute(id: string, input: CreateRun) {
-    if (!this.store.claim(id)) return;
+  async startManaged(id: string, input: CreateRun) {
+    if (!this.store.claim(id)) throw new ApiError(409, "RUN_ALREADY_STARTED");
     const run = this.store.run(id);
-    const deadline = performance.now() + run.task.budget.timeoutMs;
-    const stop = (reason: RuntimeReason) => {
+    const active = {
+      run,
+      input,
+      deadline: performance.now() + run.task.budget.timeoutMs,
+      controller: new AbortController(),
+    };
+    this.activeRuns.set(id, active);
+    run.candidates = await this.candidates(input);
+    this.store.saveRun(run);
+    const context = this.context(run.contextId, "live");
+    if (context.ruleVersion !== RULE_VERSION)
+      this.stopManaged(id, "RULE_UNSUPPORTED");
+    else if (run.task.schemaVersion !== SCHEMA_VERSION)
+      this.stopManaged(id, "SCHEMA_UNSUPPORTED");
+    return run;
+  }
+  stopManaged(id: string, reason: RuntimeReason) {
+    const active = this.activeRuns.get(id);
+    const run = active?.run ?? this.store.run(id);
+    if (run.status === "QUEUED" || run.status === "RUNNING") {
       run.status = "STOPPED";
       run.stopReason = reason;
       run.finishedAt = iso();
+      active?.controller.abort();
       this.store.saveRun(run);
-    };
+    }
+    return run;
+  }
+  async releaseManaged(id: string) {
+    const active = this.activeRuns.get(id);
+    if (active?.inFlight) await active.inFlight.catch(() => {});
+    this.activeRuns.delete(id);
+  }
+  attemptManaged(id: string, serviceId: string): Promise<RunSnapshot> {
+    const active = this.activeRuns.get(id);
+    if (!active || active.run.status !== "RUNNING")
+      return Promise.reject(new ApiError(409, "RUN_TERMINAL"));
+    if (active.inFlight && active.inFlightService === serviceId)
+      return active.inFlight;
+    const previous = active.run.attempts.find((a) => a.serviceId === serviceId);
+    if (previous) return Promise.resolve(active.run);
+    if (active.inFlight)
+      return Promise.reject(new ApiError(409, "ATTEMPT_IN_PROGRESS"));
+    const promise = this.performAttempt(active, serviceId).finally(() => {
+      active.inFlight = undefined;
+      active.inFlightService = undefined;
+    });
+    active.inFlight = promise;
+    active.inFlightService = serviceId;
+    return promise;
+  }
+  private async performAttempt(
+    active: NonNullable<ReturnType<typeof this.activeRuns.get>>,
+    serviceId: string,
+  ): Promise<RunSnapshot> {
+    const { run, input, deadline } = active;
+    const choices = await this.candidates(input);
+    if (run.status !== "RUNNING" || active.controller.signal.aborted)
+      throw new ApiError(409, "RUN_TERMINAL");
+    const candidate = choices.find(
+      (c) => c.serviceId === serviceId && c.eligible,
+    );
+    if (!candidate) throw new ApiError(400, "CANDIDATE_NOT_ELIGIBLE");
+    if (
+      run.attempts.length >= run.task.budget.maxAttempts ||
+      performance.now() >= deadline
+    )
+      return this.stopManaged(run.runId, "BUDGET_EXHAUSTED");
+    const service = this.config.services.find(
+      (s) => s.serviceId === serviceId,
+    )!;
+    const quote = BigInt(service.quoteWei!);
+    if (BigInt(run.spentWei) + quote > BigInt(run.task.budget.maxCostWei))
+      return this.stopManaged(run.runId, "BUDGET_EXHAUSTED");
     try {
-      run.candidates = await this.candidates(input);
+      const start = performance.now();
+      const attempt: Attempt = {
+        status: "RUNNING",
+        attemptId: newId(),
+        serviceId: service.serviceId,
+        startedAt: iso(),
+        endedAt: iso(),
+        source: service.source,
+        observationStatus: "ERROR",
+        runtimeReason: null,
+        latencyMs: 0,
+        reservedCostWei: quote.toString(),
+        verification: null,
+        evidenceId: null,
+      };
+      run.spentWei = (BigInt(run.spentWei) + quote).toString();
+      run.attempts.push(attempt);
+      this.store.saveRun(run); // Durable reservation before outbound side effects.
+      const observed = observation(
+        service.serviceId,
+        "deliver",
+        service.source,
+        run.task.blockHash,
+        run.task.account,
+      );
+      observed.response.serviceVersion = service.version;
+      try {
+        const response = await fetch_json(service.endpoint, {
+          body: run.task,
+          signal: active.controller.signal,
+          timeoutMs: Math.max(
+            1,
+            Math.min(
+              service.timeoutMs,
+              Math.floor(deadline - performance.now()),
+            ),
+          ),
+        });
+        observed.httpStatus = response.httpStatus;
+        observed.latencyMs =
+          Math.round((performance.now() - start) * 100) / 100;
+        const parsed = DeliveryEnvelopeSchema.safeParse(response.data);
+        if (!parsed.success)
+          throw new TransportError("INVALID_RESPONSE", response.httpStatus);
+        const delivery = parsed.data;
+        const context = this.context(run.contextId, "live");
+        if (this.store.consumed(run.task.requestId))
+          context.consumedRequestIds = [run.task.requestId];
+        attempt.verification = await verify_delivery(
+          run.task,
+          delivery,
+          context,
+        );
+        observed.status =
+          delivery.deliveryStatus === "unsupported" ? "UNSUPPORTED" : "OK";
+        observed.capability =
+          delivery.deliveryStatus === "unsupported"
+            ? "UNSUPPORTED"
+            : "SUPPORTED";
+        observed.response = {
+          deliveryStatus: delivery.deliveryStatus,
+          signaturePresent: !!delivery.signature,
+          serviceVersion: service.version,
+        };
+        if (
+          delivery.serviceId !== service.serviceId ||
+          delivery.serviceVersion !== service.version
+        )
+          attempt.runtimeReason = "SERVICE_ID_MISMATCH";
+        const evidence = await build_evidence(run.task, delivery, context, {
+          mode: service.source,
+          source: service.serviceId,
+          capturedAt: context.evaluatedAt,
+          description:
+            service.source === "FAULT_INJECTION"
+              ? "Controlled local fault-injection scenario; not an RPC provider incident"
+              : service.source === "LIVE"
+                ? "Live signed service delivery under caller-configured identity and baseline"
+                : "Locally signed adapter delivery using recorded public account proof; signature is not from RPC provider",
+        });
+        const saved = this.store.saveEvidence(
+          evidence.bundle,
+          evidence.manifest,
+          run.contextId,
+          context.evaluatedAt,
+        );
+        attempt.evidenceId = saved.id;
+        if (performance.now() >= deadline)
+          attempt.runtimeReason = "BUDGET_EXHAUSTED";
+        if (
+          run.status === "RUNNING" &&
+          !active.controller.signal.aborted &&
+          attempt.verification.verdict === "PASS" &&
+          !attempt.runtimeReason &&
+          delivery.response
+        ) {
+          // Only requested, verified fields are exposed to the consumer.
+          const values = Object.fromEntries(
+            run.task.fields.map((field) => [
+              field,
+              delivery.response!.values[field],
+            ]),
+          );
+          run.accepted = {
+            serviceId: service.serviceId,
+            evidenceId: saved.id,
+            blockHash: run.task.blockHash,
+            values,
+          };
+        }
+      } catch (e) {
+        if (!(e instanceof TransportError)) throw e;
+        observed.latencyMs =
+          Math.round((performance.now() - start) * 100) / 100;
+        observed.status = e.status;
+        observed.httpStatus = e.httpStatus;
+        observed.rpcCode = e.rpcCode;
+        attempt.runtimeReason =
+          e.status === "ERROR"
+            ? "NETWORK_ERROR"
+            : e.status === "OK"
+              ? "INVALID_RESPONSE"
+              : e.status;
+      }
+      attempt.status = "COMPLETED";
+      attempt.observationStatus = observed.status;
+      attempt.latencyMs = Math.round((performance.now() - start) * 100) / 100;
+      attempt.endedAt = iso();
+      this.store.saveObservation(observed);
+      if (run.accepted) {
+        run.status = "SUCCEEDED";
+        run.finishedAt = iso();
+        this.store.adopt(run);
+      } else {
+        this.store.saveRun(run);
+        if (performance.now() >= deadline)
+          this.stopManaged(run.runId, "BUDGET_EXHAUSTED");
+      }
+      return run;
+    } catch (error) {
+      const last = run.attempts.at(-1);
+      if (last?.status === "RUNNING") {
+        last.status = "INTERRUPTED";
+        last.runtimeReason = "INTERNAL_ERROR";
+        last.endedAt = iso();
+      }
+      // Adoption may fail while committing. Never publish the in-memory SUCCEEDED
+      // snapshot outside the atomic consumption transaction after a rollback.
+      const persisted = this.store.run(run.runId);
+      if (persisted.status === "SUCCEEDED") return persisted;
+      run.accepted = null;
+      if (persisted.status === "STOPPED") {
+        run.status='STOPPED';run.stopReason=persisted.stopReason;run.finishedAt=persisted.finishedAt;
+      } else {
+        run.status = "ERROR";
+        run.stopReason = "INTERNAL_ERROR";
+        run.finishedAt = iso();
+      }
       this.store.saveRun(run);
-      const ctx = this.context(run.contextId, "live");
-      if (ctx.ruleVersion !== RULE_VERSION) {
-        stop("RULE_UNSUPPORTED");
-        return;
-      }
-      if (run.task.schemaVersion !== SCHEMA_VERSION) {
-        stop("SCHEMA_UNSUPPORTED");
-        return;
-      }
+      throw error;
+    }
+  }
+  private async execute(id: string, input: CreateRun) {
+    try {
+      const run = await this.startManaged(id, input);
       let budgetBlocked = false;
       for (const candidate of run.candidates.filter((c) => c.eligible)) {
+        if (run.status !== "RUNNING") return;
         if (this.shuttingDown) {
-          stop("INTERRUPTED");
+          this.stopManaged(id, "INTERRUPTED");
           return;
         }
         if (
-          run.attempts.length >= run.task.budget.maxAttempts ||
-          performance.now() >= deadline
+          BigInt(run.spentWei) + BigInt(candidate.quoteWei!) >
+          BigInt(run.task.budget.maxCostWei)
         ) {
-          stop("BUDGET_EXHAUSTED");
-          return;
-        }
-        const service = this.config.services.find(
-          (s) => s.serviceId === candidate.serviceId,
-        )!;
-        const quote = BigInt(service.quoteWei!);
-        if (BigInt(run.spentWei) + quote > BigInt(run.task.budget.maxCostWei)) {
           budgetBlocked = true;
           continue;
         }
-        const start = performance.now();
-        const attempt: Attempt = {
-          status: "RUNNING",
-          attemptId: newId(),
-          serviceId: service.serviceId,
-          startedAt: iso(),
-          endedAt: iso(),
-          source: service.source,
-          observationStatus: "ERROR",
-          runtimeReason: null,
-          latencyMs: 0,
-          reservedCostWei: quote.toString(),
-          verification: null,
-          evidenceId: null,
-        };
-        run.spentWei = (BigInt(run.spentWei) + quote).toString();
-        run.attempts.push(attempt);
-        this.store.saveRun(run); // Durable reservation before outbound side effects.
-        const observed = observation(
-          service.serviceId,
-          "deliver",
-          service.source,
-          run.task.blockHash,
-          run.task.account,
-        );
-        observed.response.serviceVersion = service.version;
-        try {
-          const response = await fetch_json(service.endpoint, {
-            body: run.task,
-            timeoutMs: Math.max(
-              1,
-              Math.min(
-                service.timeoutMs,
-                Math.floor(deadline - performance.now()),
-              ),
-            ),
-          });
-          observed.httpStatus = response.httpStatus;
-          observed.latencyMs =
-            Math.round((performance.now() - start) * 100) / 100;
-          const parsed = DeliveryEnvelopeSchema.safeParse(response.data);
-          if (!parsed.success)
-            throw new TransportError("INVALID_RESPONSE", response.httpStatus);
-          const delivery = parsed.data;
-          const context = this.context(run.contextId, "live");
-          if (this.store.consumed(run.task.requestId))
-            context.consumedRequestIds = [run.task.requestId];
-          attempt.verification = await verify_delivery(
-            run.task,
-            delivery,
-            context,
-          );
-          observed.status =
-            delivery.deliveryStatus === "unsupported" ? "UNSUPPORTED" : "OK";
-          observed.capability =
-            delivery.deliveryStatus === "unsupported"
-              ? "UNSUPPORTED"
-              : "SUPPORTED";
-          observed.response = {
-            deliveryStatus: delivery.deliveryStatus,
-            signaturePresent: !!delivery.signature,
-            serviceVersion: service.version,
-          };
-          if (
-            delivery.serviceId !== service.serviceId ||
-            delivery.serviceVersion !== service.version
-          )
-            attempt.runtimeReason = "SERVICE_ID_MISMATCH";
-          const evidence = await build_evidence(run.task, delivery, context, {
-            mode: service.source,
-            source: service.serviceId,
-            capturedAt: context.evaluatedAt,
-            description:
-              service.source === "FAULT_INJECTION"
-                ? "Controlled local fault-injection scenario; not an RPC provider incident"
-                : service.source === "LIVE"
-                  ? "Live signed service delivery under caller-configured identity and baseline"
-                  : "Locally signed adapter delivery using recorded public account proof; signature is not from RPC provider",
-          });
-          const saved = this.store.saveEvidence(
-            evidence.bundle,
-            evidence.manifest,
-            run.contextId,
-            context.evaluatedAt,
-          );
-          attempt.evidenceId = saved.id;
-          if (performance.now() >= deadline)
-            attempt.runtimeReason = "BUDGET_EXHAUSTED";
-          if (
-            attempt.verification.verdict === "PASS" &&
-            !attempt.runtimeReason &&
-            delivery.response
-          ) {
-            // Only requested, verified fields are exposed to the consumer.
-            const values = Object.fromEntries(
-              run.task.fields.map((field) => [
-                field,
-                delivery.response!.values[field],
-              ]),
-            );
-            run.accepted = {
-              serviceId: service.serviceId,
-              evidenceId: saved.id,
-              blockHash: run.task.blockHash,
-              values,
-            };
-          }
-        } catch (e) {
-          if (!(e instanceof TransportError)) throw e;
-          observed.latencyMs =
-            Math.round((performance.now() - start) * 100) / 100;
-          observed.status = e.status;
-          observed.httpStatus = e.httpStatus;
-          observed.rpcCode = e.rpcCode;
-          attempt.runtimeReason =
-            e.status === "ERROR"
-              ? "NETWORK_ERROR"
-              : e.status === "OK"
-                ? "INVALID_RESPONSE"
-                : e.status;
-        }
-        attempt.status = "COMPLETED";
-        attempt.observationStatus = observed.status;
-        attempt.latencyMs = Math.round((performance.now() - start) * 100) / 100;
-        attempt.endedAt = iso();
-        this.store.saveObservation(observed);
-        if (run.accepted) {
-          run.status = "SUCCEEDED";
-          run.finishedAt = iso();
-          this.store.adopt(run);
-          return;
-        }
-        this.store.saveRun(run);
-        if (performance.now() >= deadline) {
-          stop("BUDGET_EXHAUSTED");
-          return;
-        }
+        await this.attemptManaged(id, candidate.serviceId);
       }
-      stop(budgetBlocked ? "BUDGET_EXHAUSTED" : "NO_ACCEPTABLE_DELIVERY");
+      this.stopManaged(
+        id,
+        budgetBlocked ? "BUDGET_EXHAUSTED" : "NO_ACCEPTABLE_DELIVERY",
+      );
     } catch {
-      run.accepted = null;
-      run.status = "ERROR";
-      run.stopReason = "INTERNAL_ERROR";
-      const interrupted = run.attempts.at(-1);
-      if (interrupted?.status === "RUNNING") {
-        interrupted.status = "INTERRUPTED";
-        interrupted.runtimeReason = "INTERNAL_ERROR";
-        interrupted.endedAt = iso();
-      }
-      run.finishedAt = iso();
-      this.store.saveRun(run);
+      this.stopManaged(id, "INTERNAL_ERROR");
+    } finally {
+      await this.releaseManaged(id);
     }
   }
   createReplay(evidenceId: string, contextId: string): string {

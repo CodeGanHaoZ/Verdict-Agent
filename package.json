@@ -37,7 +37,9 @@
     "verify:b": "node scripts/dev/verify.mjs",
     "web": "npm run dev --workspace @verdict/web",
     "web:preview": "npm run preview --workspace @verdict/web",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "pi:configure": "node scripts/dev/configure-pi.mjs",
+    "verify:pi": "node scripts/dev/verify-pi.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",
@@ -45,5 +47,9 @@
     "@types/node": "22.19.0",
     "viem": "2.57.3",
     "@playwright/test": "1.63.0"
+  },
+  "overrides": {
+    "@earendil-works/pi-ai": "1.0.4",
+    "@earendil-works/pi-telemetry": "1.0.4"
   }
 }

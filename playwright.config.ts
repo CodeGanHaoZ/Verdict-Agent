@@ -15,7 +15,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "node tests/e2e/start-backend.mjs",
+      command: "tsx tests/e2e/start-backend.mjs",
       url: "http://127.0.0.1:3102/health",
       reuseExistingServer: false,
       timeout: 30000,
