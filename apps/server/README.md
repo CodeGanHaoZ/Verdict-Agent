@@ -15,6 +15,8 @@ npm run server -- --config .local/b-demo/local-two.json
 
 测试：`npm run test:b`；全流程与 API 见 [B 实现与复验](../../docs/13-B包实现与复验.md)。当前面向本地联调，未实现公众多租户认证、分页归档或跨机器分布式队列。
 
-Agent 接口：GET `/api/tools` 导出八个工具的参数 schema；POST `/api/tools/call` 严格分发到现有 Engine，不复制核验代码。完整参数及架构见 [工具与出海验收](../../docs/14-Agent工具与出海验收.md)。工具结果不是模型裁决；runId、HTTP 200、复验 COMPLETED 都不能代替验收 PASS。
+宿主工具接口（不直接供 PI 调用）：GET `/api/tools` 导出八个工具的参数 schema；POST `/api/tools/call` 严格分发到现有 Engine，不复制核验代码。完整参数及架构见 [工具与出海验收](../../docs/16-Agent工具与出海验收.md)。工具结果不是模型裁决；runId、HTTP 200、复验 COMPLETED 都不能代替验收 PASS。
 
 可选 `rpcObservationOrigin` 来自操作者配置，附于 RPC 观测并进入分组，默认不输出。它不改变证据包和数据结论。Windows 可运行根目录 `npm run verify:local` 自动验证实际五进程与工具消费路径。
+
+PI 可选模块：`agent-service.ts` 提供草案、版本确认、执行会话和事件；`pi-runtime.ts` 绑定实际 PI 1.0.4／兼容模型接口；`agent-store.ts` 增量持久化。固定流程和 PI 共用 `engine.ts` 的单次调用／核验／预算／采用。未配置时 PI 明示不可用，固定流程不受影响。命令、接口、测试与真实模型联调状态见 [PI 说明](../../docs/15-PI接入与复验.md)。

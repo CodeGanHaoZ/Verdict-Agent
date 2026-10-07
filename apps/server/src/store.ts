@@ -97,8 +97,11 @@ export class Store {
       throw e;
     }
   }
+  private transactionDepth = 0;
   transaction<T>(fn: () => T): T {
+    if (this.transactionDepth) return fn();
     this.db.exec("BEGIN IMMEDIATE");
+    this.transactionDepth++;
     try {
       const value = fn();
       this.db.exec("COMMIT");
@@ -106,6 +109,8 @@ export class Store {
     } catch (e) {
       this.db.exec("ROLLBACK");
       throw e;
+    } finally {
+      this.transactionDepth--;
     }
   }
   reserveRun(

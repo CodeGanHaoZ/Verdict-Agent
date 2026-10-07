@@ -14,6 +14,9 @@
     "@verdict/core": "0.1.0",
     "@verdict/evidence": "0.1.0",
     "@verdict/observations": "0.1.0",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@earendil-works/pi-agent-core": "1.0.4",
+    "@earendil-works/pi-ai": "1.0.4",
+    "typebox": "1.3.27"
   }
 }

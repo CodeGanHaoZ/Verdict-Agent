@@ -14,4 +14,4 @@ C 可复用 `@verdict/protocol` 的 CreateRunSchema / RunSnapshotSchema，并直
 
 新增 `call_tool(base,{name,arguments})` 与 `guard(base,input)`。后者通过工具 API 提交／查询，同 requestId 幂等恢复，只返回 SUCCEEDED 的 accepted；STOPPED/ERROR 抛出携带实际 run 的 `AcceptanceStopped`，不能继续使用未验数据。宿主自行固定任务要求、可信 contextId、预算与可调工具范围。
 
-已有两个后端时运行 `npm run example:tools -- http://127.0.0.1:3001 http://127.0.0.1:3002`，实际验证所有工具、签名失败后替换、全失败停止、证据下载与第二实例重验。Windows 可用 `npm run verify:local` 一次启动／验证／结束五个隔离进程。没有 LLM SDK 或完整 MCP server；详见 [接入说明](../../docs/14-Agent工具与出海验收.md)。
+已有两个后端时运行 `npm run example:tools -- http://127.0.0.1:3001 http://127.0.0.1:3002`，实际验证所有工具、签名失败后替换、全失败停止、证据下载与第二实例重验。Windows 可用 `npm run verify:local` 一次启动／验证／结束五个隔离进程。没有 LLM SDK 或完整 MCP server；详见 [接入说明](../../docs/16-Agent工具与出海验收.md)。

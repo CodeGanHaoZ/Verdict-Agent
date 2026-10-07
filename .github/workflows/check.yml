@@ -1,4 +1,4 @@
-name: Verify A and B
+name: Verify backend and web
 on:
   push:
   pull_request:
@@ -25,5 +25,8 @@ jobs:
       - name: Independent process demo
         if: runner.os == 'Linux'
         run: npm run dev:init && npm run dev:start && npm run verify:b
+      - run: npx playwright install --with-deps chromium
+      - name: Browser integration
+        run: npm run test:e2e
       - if: always() && runner.os == 'Linux'
         run: npm run dev:stop

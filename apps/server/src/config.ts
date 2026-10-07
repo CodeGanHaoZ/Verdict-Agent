@@ -26,7 +26,42 @@ const Endpoint = z
           ["127.0.0.1", "localhost"].includes(url.hostname)))
     );
   }, "Only configured HTTPS or loopback HTTP endpoints without credentials are allowed");
+export const AgentConfigSchema = z.strictObject({
+  baseURL: Endpoint,
+  modelId: z.string().min(1).max(160),
+  apiKeyEnv: z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
+  source: z.enum(["LIVE", "TEST_TRANSPORT"]).default("LIVE"),
+  accountAliases: z
+    .record(z.string(), z.string().regex(/^0x[0-9a-f]{40}$/))
+    .default({}),
+  draftRequests: z.number().int().min(1).max(2).default(2),
+  runRequests: z.number().int().min(1).max(8).default(8),
+  toolCalls: z.number().int().min(1).max(12).default(12),
+  requestTimeoutMs: z.number().int().min(1).max(30000).default(30000),
+  outputTokens: z.number().int().min(64).max(1024).default(1024),
+  contextWindow: z.number().int().min(4096).max(200000).default(32768),
+  maxInputChars: z.number().int().min(1000).max(64000).default(32000),
+  maxAttempts: z.number().int().min(1).max(100).default(3),
+  maxDurationMs: z.number().int().min(1).max(600000).default(180000),
+  maxCostWei: DecimalSchema.default("0"),
+  pricePerMillion: z
+    .strictObject({
+      input: z.number().nonnegative(),
+      output: z.number().nonnegative(),
+      cacheRead: z.number().nonnegative(),
+      cacheWrite: z.number().nonnegative(),
+    })
+    .optional(),
+  replayTargets: z
+    .array(
+      z.strictObject({ id: z.string().min(1).max(160), baseURL: Endpoint }),
+    )
+    .max(4)
+    .default([]),
+});
+export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export const ServerConfigSchema = z.strictObject({
+  agent: AgentConfigSchema.optional(),
   instanceId: z.string().regex(/^[\w.-]+$/),
   host: z.literal("127.0.0.1").default("127.0.0.1"),
   port: z.number().int().min(0).max(65535),

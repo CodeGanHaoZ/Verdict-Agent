@@ -14,6 +14,11 @@
 | jsonc-parser | 3.3.1 | MIT | [jsonc-parser](https://github.com/microsoft/node-jsonc-parser)：JSON 语法树，用于拒绝重复键和非严格 JSON |
 | TypeScript | 5.9.3 | Apache-2.0 | [TypeScript](https://github.com/microsoft/TypeScript)：构建与类型检查 |
 | tsx | 4.23.15 | MIT | [tsx](https://github.com/privatenumber/tsx)：测试与样本工具运行 |
+| Vite | 7.3.7 | MIT | [Vite](https://github.com/vitejs/vite)：本地网页构建与开发服务器 |
+| @playwright/test | 1.63.0 | Apache-2.0 | [Playwright](https://github.com/microsoft/playwright)：真实浏览器集成测试 |
+| @earendil-works/pi-agent-core | 1.0.4 | MIT | [PI](https://github.com/earendil-works/pi)：顺序业务工具、模型循环和事件 |
+| @earendil-works/pi-ai | 1.0.4 | MIT | PI：显式兼容模型提供商；传递依赖 pi-telemetry 固定 1.0.4 |
+| typebox | 1.3.27 | MIT | [TypeBox](https://github.com/sinclairzx81/typebox)：PI 工具 JSON Schema 适配 |
 | @types/node | 22.19.0 | MIT | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped)：Node 类型 |
 
 许可证按本次实际安装的 package.json 核对；依赖自身的许可文本随包分发。若以后修改或再分发依赖源码，按该依赖的许可证保留通知及相应源码要求。
@@ -22,4 +27,4 @@
 
 真实链上样本的采集方法、来源、文件摘要与限制见 [初始样本](fixtures/core/ethereum-mainnet-26134149/README.md) 和 [扩展数据集](fixtures/core/mainnet-corpus/README.md)。公开账本事实由 RPC 读取，不是复制第三方代码或商业事故数据集；不声称对外部服务、地址或其标识拥有权利。演示签名由本地临时密钥生成，不是 RPC 厂商签名。
 
-技术依据：[EIP-1186](https://eips.ethereum.org/EIPS/eip-1186)、[EIP-712](https://eips.ethereum.org/EIPS/eip-712)、[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785)。PI、模型和链上写入未接入。
+技术依据：[EIP-1186](https://eips.ethereum.org/EIPS/eip-1186)、[EIP-712](https://eips.ethereum.org/EIPS/eip-712)、[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785)。PI 接入及真实模型验证状态见 docs/15-PI接入与复验.md；链上写入未接入。

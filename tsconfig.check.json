@@ -13,6 +13,8 @@
     "packages/*/test/**/*.ts",
     "apps/verifier-cli/test/**/*.ts",
     "fixtures/core/*.ts",
-    "tests/integration/**/*.ts"
+    "tests/integration/**/*.ts",
+    "tests/e2e/**/*.ts",
+    "playwright.config.ts"
   ]
 }

@@ -23,7 +23,7 @@ Verdict 是 **Agent 调用服务时的验收层**。Agent／宿主先声明交�
 ```mermaid
 flowchart TB
   Host["Agent 宿主／业务系统<br/>固化任务要求与预算"] --> Tools["B：工具目录与调用入口<br/>严格共享 schema"]
-  Web["C：审计网页<br/>待接入"] -. HTTP API .-> Server
+  Web["C：审计网页<br/>已接入真实 API"] -. HTTP API .-> Server
   Tools --> Server["B：Engine<br/>候选选择、幂等登记、有界替换"]
   Operator["操作者配置<br/>端点白名单、检查点、密钥授权、规则"] --> Server
   Server --> Signed["配置中的签名服务<br/>FROZEN／FAULT_INJECTION 演示"]
@@ -87,7 +87,7 @@ sequenceDiagram
 | `replay_evidence` | `{evidenceId,contextId}` | `{replayId}`；重验已有材料 |
 | `get_replay` | `{replayId}` | 重算结果、完整性及报告一致性；COMPLETED 可确认 FAIL |
 
-这是一组宿主无关的函数工具接口，**尚非完整 MCP server，也未接入 LLM SDK**。宿主可把本地工具目录适配到其模型工具格式，保留参数验证和确定性采用规则。工具结果、服务文本与证据内容都是数据，不能作为系统指令；大证据包应由宿主在 API 间传递，不必经过模型上下文。
+这是一组宿主无关的函数工具接口，**尚非完整 MCP server**。仓库另有 [PI 编排](15-PI接入与复验.md)，使用五个绑定已确认任务的受限工具，不直接把本节八个宿主接口暴露给模型；同名 find_service／replay_evidence 的参数与授权边界不同。宿主可把本地工具目录适配到其模型工具格式，保留参数验证和确定性采用规则。工具结果、服务文本与证据内容都是数据，不能作为系统指令；大证据包应由宿主在 API 间传递，不必经过模型上下文。
 
 ```ts
 import { guard, AcceptanceStopped } from '@verdict/consumer';
@@ -176,6 +176,8 @@ npm run verify:local
 
 2026-10-07 Windows 实测：类型检查、A 的 48 项回归、B 的 26 项集成测试通过（包括新增 4 项）；五进程演示通过。错区块／错值拒收、正常服务采用、全失败停止、第二实例复算 FAIL、历史开关改变选择且新交付再验收均已运行。发布仍 `not_requested`。Linux／Windows CI 已配置，远端实际结果以 GitHub Actions 为准。
 
+2026-10-07 合并前端与 PI 主线后的 Linux 复验：`npm ci --ignore-scripts`、`npm run typecheck`、`npm run test:all`（A 48＋B 26＋PI 12）、`npm run verify:local` 和 `npm run test:e2e`（7 项）全部通过。宿主工具与 PI 工具各自保留入口和参数约束；PI 测试使用明确标记的 TEST_TRANSPORT，未宣称真实模型接通。浏览器私有文件边界测试使用独立临时文件，兼容 Windows 路径且不依赖预先初始化演示目录。
+
 C 可直接使用原 HTTP API 或工具接口；原始 bundle 下载仍使用 `/api/evidence/:id/bundle`。现有 Linux `dev:start/dev:stop` 保留；Windows 使用 `verify:local` 或各进程前台入口。若已有运行后端，可单独执行 `npm run example:tools -- http://127.0.0.1:3001 http://127.0.0.1:3002`。
 
-剩余交付：C 网页与浏览器端到端测试、真实锚定 adapter、完整 MCP／模型宿主接入、真正多地区部署及长时间观测、生产认证／隔离／限额和公开演示链接。当前不存在全球 SLA、厂商事故公告认证、合规认证或主网部署结果。
+合并主线后，简易网页、浏览器测试和 PI 编排代码已经接入；真实模型联调仍待本地接口配置。剩余交付：真实锚定 adapter、完整 MCP、真正多地区部署及长时间观测、生产认证／隔离／限额和公开演示链接。当前不存在全球 SLA、厂商事故公告认证、合规认证或主网部署结果。

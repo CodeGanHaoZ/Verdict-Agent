@@ -11,6 +11,7 @@ import {
   parse_json_strict,
 } from "@verdict/protocol";
 import { Engine } from "./engine.js";
+import { AgentService } from "./agent-service.js";
 import { ApiError } from "./store.js";
 import { type ServerConfig } from "./config.js";
 import { call_tool, describe_environment, tool_catalog } from "./tools.js";
@@ -49,6 +50,7 @@ function send(res: ServerResponse, code: number, data: unknown) {
 }
 export function start_server(config: ServerConfig, launchId = "foreground") {
   const engine = new Engine(config);
+  const agents = new AgentService(engine);
   let observationJob: Promise<unknown> | null = null;
   const server = createServer(async (req, res) => {
     try {
@@ -71,6 +73,57 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
         return;
       }
       const path = new URL(req.url ?? "/", "http://localhost").pathname;
+      if (req.method === "GET" && path === "/api/agent/meta") {
+        send(res, 200, agents.info());
+        return;
+      }
+      if (req.method === "POST" && path === "/api/agent/drafts") {
+        send(res, 202, agents.createDraft(await body(req)));
+        return;
+      }
+      const draftRoute = path.match(
+        /^\/api\/agent\/drafts\/([\w-]+)(?:\/(revise|confirm))?$/,
+      );
+      if (draftRoute) {
+        const [, id, action] = draftRoute;
+        if (req.method === "GET" && !action) {
+          send(res, 200, agents.draft(id));
+          return;
+        }
+        if (req.method === "POST" && action === "revise") {
+          send(res, 200, agents.reviseDraft(id, await body(req)));
+          return;
+        }
+        if (req.method === "POST" && action === "confirm") {
+          send(res, 202, agents.confirmDraft(id, await body(req)));
+          return;
+        }
+      }
+      const agentRoute = path.match(
+        /^\/api\/agent\/runs\/([\w-]+)(?:\/(events|stop))?$/,
+      );
+      if (agentRoute) {
+        const [, id, action] = agentRoute;
+        if (req.method === "GET" && !action) {
+          send(res, 200, agents.store.agent(id));
+          return;
+        }
+        if (req.method === "GET" && action === "events") {
+          const after = Number(
+            new URL(req.url!, "http://localhost").searchParams.get("after") ??
+              0,
+          );
+          if (!Number.isSafeInteger(after) || after < 0)
+            throw new ApiError(400, "INVALID_CURSOR");
+          send(res, 200, { events: agents.store.events(id, after) });
+          return;
+        }
+        if (req.method === "POST" && action === "stop") {
+          z.strictObject({}).parse(await body(req));
+          send(res, 200, agents.stop(id));
+          return;
+        }
+      }
       if (req.method === "GET" && path === "/health") {
         send(res, 200, {
           instanceId: config.instanceId,
@@ -122,14 +175,12 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
       }
       if (req.method === "GET" && path === "/api/evidence") {
         send(res, 200, {
-          evidence: engine.store
-            .evidenceRows()
-            .map((r) => ({
-              evidenceId: r.id,
-              contextId: r.contextId,
-              createdAt: r.createdAt,
-              publication: r.publication,
-            })),
+          evidence: engine.store.evidenceRows().map((r) => ({
+            evidenceId: r.id,
+            contextId: r.contextId,
+            createdAt: r.createdAt,
+            publication: r.publication,
+          })),
         });
         return;
       }
@@ -228,11 +279,13 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
   });
   return {
     engine,
+    agents,
     server,
     ready,
     close: async () => {
       await new Promise<void>((r) => server.close(() => r()));
       await observationJob;
+      await agents.close();
       await engine.close();
     },
   };
