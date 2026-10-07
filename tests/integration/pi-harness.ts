@@ -1,3 +1,6 @@
+import { reviewerFixture } from "./guard-reviewer.js";
+import { AgentConfigSchema } from "../../apps/server/src/config.js";
+import type { AgentConditions } from "@verdict/protocol";
 import { createServer } from "node:http";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -370,6 +373,10 @@ export async function harness(
       requestTimeoutMs: 1000,
     },
   });
+  const {missing,explanation,...reviewScope}=proposal;
+  const reviewer=await reviewerFixture(structuredClone(reviewScope) as AgentConditions);
+  process.env.VERDICT_GUARD_FIXTURE_KEY='test-only-independent-reviewer';
+  config.guard=AgentConfigSchema.parse({...config.agent!,baseURL:reviewer.baseURL,apiKeyEnv:'VERDICT_GUARD_FIXTURE_KEY',modelId:'guard-test'});
   let app = start_server(config);
   let base = `http://127.0.0.1:${await app.ready}`;
   return {
@@ -391,6 +398,7 @@ export async function harness(
     },
     close: async () => {
       await app.close();
+      await reviewer.close();
       for (const d of demos) await d.close();
       model.closeAllConnections();
       await new Promise<void>((r) => model.close(() => r()));

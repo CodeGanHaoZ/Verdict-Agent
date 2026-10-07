@@ -641,6 +641,7 @@ test("overall task budget still aborts a healthy model stream before its longer 
     const created = await api("/api/agent/runs", {
       clientRequestId: randomUUID(),
       prompt: "检查账户",
+      constraints: {contextId:h.proposal.contextId,account:h.proposal.account,blockHash:h.proposal.blockHash,fields:h.proposal.fields,candidateIds:h.proposal.candidateIds,useHistoricalEvidence:false,budget:{...h.proposal.budget,timeoutMs:300}},
     });
     const a = await waitAgent(created.data.agentId);
     assert.equal(a.error, "BUDGET_EXHAUSTED");
@@ -666,19 +667,11 @@ test("an unknown task field can be null without inventing a target or generating
     });
     const a = await waitAgent(created.data.agentId);
     assert.equal(a.status, "STOPPED");
-    assert.equal(a.error, null);
+    assert.equal(a.error, "GUARD_STOPPED");
     assert.equal(a.runId, null);
     const events = (await api(`/api/agent/runs/${a.agentId}/events?after=0`))
       .data.events;
-    assert(
-      events.some(
-        (e: any) =>
-          e.type === "TOOL_END" &&
-          e.toolName === "start_task" &&
-          JSON.stringify(e.data).includes("started"),
-      ),
-    );
-  } finally {
+    assert(!events.some((e: any) => e.type === 'TOOL_END' && e.toolName === 'request_verified_state'));  } finally {
     h.scripted.mode = "normal";
   }
 });

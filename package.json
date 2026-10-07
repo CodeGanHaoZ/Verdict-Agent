@@ -49,7 +49,12 @@
     "report:360": "node scripts/dev/report-360.mjs",
     "redteam:check": "node scripts/dev/check-redteam.mjs",
     "redteam:agent": "npm run build && node --use-env-proxy --import tsx scripts/dev/redteam-agent.ts",
-    "redteam:boundaries": "npm run build && node scripts/dev/redteam-boundaries.mjs"
+    "redteam:boundaries": "npm run build && node scripts/dev/redteam-boundaries.mjs",
+    "guard:rules": "tsx scripts/dev/guard-rules.ts",
+    "test:guard": "npm run build && tsx --test tests/integration/guard.test.ts",
+    "verify:guard": "npm run build && tsx scripts/dev/verify-guard.ts",
+    "guard:configure": "npm run build && node scripts/dev/configure-guard.mjs",
+    "verify:guard:live": "tsx scripts/dev/verify-guard-live.ts"
   },
   "devDependencies": {
     "typescript": "5.9.3",

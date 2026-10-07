@@ -148,6 +148,36 @@ export function mountAgentUI(
             `执行条件：${run.task.account} · 区块 ${run.task.blockHash} · ${run.task.fields.join(" / ")} · 最多 ${run.task.budget.maxAttempts} 次 · ${run.task.budget.maxCostWei} wei`;
         }
         renderAgent();
+        try {
+          const guard=await request(primary, `/api/guard/tasks/${id}`) as {status:string;boundary:unknown;decisions:{sequence:number;verdict:string}[];usage:unknown};
+          const section=document.createElement('section');
+          section.className='pi-explanation';
+          section.innerHTML=`<h3>Verdict Guard · ${e(guard.status)}</h3><p>模型安全判断为辅助判断；硬约束由执行器检查。证据共享独立于账户验收。</p><details><summary>锁定边界、审查决定与用量</summary><pre>${e(JSON.stringify(guard,null,2))}</pre></details>`;
+          section.innerHTML+=`<div class="button-row">${guard.decisions.filter(d=>d.verdict!=='ALLOW').map(d=>`<button class="secondary-button" data-guard-export="${d.sequence}">导出决定 ${d.sequence} 的安全报告</button>`).join('')}</div><details><summary>安全证据交换与规则候选</summary><p>仅与已配置可信实例交换。默认导出范围关系的化名及摘要，不含原始任务；不公开攻击者指控。</p><textarea id="guard-import" aria-label="签名安全报告" placeholder="粘贴另一实例的签名安全报告 JSON"></textarea><button class="secondary-button" id="guard-import-submit">导入并独立复验</button><pre id="guard-import-result"></pre><button class="secondary-button" id="guard-rules-list">读取规则候选</button><pre id="guard-rules-result"></pre><p>启用与撤销由维护者在本地执行 guard:rules；模型和匿名网页不能启用规则。</p></details>`;
+          $('#pi-progress').append(section);
+          for(const button of section.querySelectorAll<HTMLButtonElement>('[data-guard-export]'))button.onclick=async()=>{
+            try{
+              const packet=await request(primary,`/api/guard/tasks/${id}/decisions/${button.dataset.guardExport}/export`);
+              const url=URL.createObjectURL(new Blob([JSON.stringify(packet,null,2)],{type:'application/json'}));
+              const link=document.createElement('a');link.href=url;link.download=`guard-${id}-${button.dataset.guardExport}.json`;link.click();URL.revokeObjectURL(url);
+            }catch(err){error(message(err));}
+          };
+          $('#guard-import-submit').onclick=async()=>{
+            try{
+              const result=await request(primary,'/api/guard/reports/import',JSON.parse($<HTMLTextAreaElement>('#guard-import').value)) as {id:string;status:string};
+              $('#guard-import-result').textContent=JSON.stringify(result,null,2);
+              const replay=document.createElement('button');replay.textContent='由本实例重新审查';replay.className='secondary-button';
+              replay.onclick=async()=>{try{$('#guard-import-result').textContent=JSON.stringify(await request(primary,`/api/guard/reports/${result.id}/replay`,{}),null,2);}catch(err){error(message(err));}};
+              $('#guard-import-result').after(replay);
+              if(result.status==='REPRODUCED'){
+                const button=document.createElement('button');button.textContent='生成规则候选（不启用）';button.className='secondary-button';
+                button.onclick=async()=>{try{$('#guard-rules-result').textContent=JSON.stringify(await request(primary,`/api/guard/reports/${result.id}/candidate`,{}),null,2);}catch(err){error(message(err));}};
+                $('#guard-import-result').after(button);
+              }
+            }catch(err){error(message(err));}
+          };
+          $('#guard-rules-list').onclick=async()=>{try{$('#guard-rules-result').textContent=JSON.stringify(await request(primary,'/api/guard/rules'),null,2);}catch(err){error(message(err));}};
+        } catch { /* Task can still be queued before boundary extraction. */ }
         if (!["QUEUED", "RUNNING"].includes(agent.status) && agent.finishedAt)
           break;
         await new Promise((r) => setTimeout(r, 500));
@@ -216,14 +246,15 @@ export function mountAgentUI(
       const info = z
         .object({
           configured: z.boolean(),
+          guardConfigured: z.boolean().optional(),
           modelId: z.string().nullable(),
           modelSource: z.string().nullable(),
         })
         .parse(await request(primary, "/api/agent/meta"));
-      configured = info.configured;
+      configured = info.configured && !!info.guardConfigured;
       $("#pi-configuration").textContent = configured
         ? `PI 1.0.4 · ${info.modelId} · ${info.modelSource}。直接接收任务并执行，缺少必要条件时会说明。`
-        : "模型未配置。请配置兼容接口与密钥环境变量；固定流程仍可使用。";
+        : "前方模型或独立外审未配置，受保护入口不可用。固定流程仍可使用（未启用外审）。";
       setWorking(false);
       let pi = false;
       try {

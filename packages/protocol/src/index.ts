@@ -232,7 +232,7 @@ export type ObservationOrigin = z.infer<typeof ObservationOriginSchema>;
 
 // PI orchestration is mutable application state, never part of the signed evidence schema.
 export const AGENT_API_VERSION = '1.1.0';
-export const AgentErrorSchema = z.enum(['MODEL_NOT_CONFIGURED','MODEL_ERROR','MODEL_RATE_LIMITED','MODEL_TIMEOUT','MODEL_LIMIT','TOOL_LIMIT','TOOL_INVALID','NO_VERIFIED_RESULT','CANCELLED','INTERRUPTED','DRAFT_INVALID','DRAFT_EXPIRED','BUDGET_EXHAUSTED','INTERNAL_ERROR']);
+export const AgentErrorSchema = z.enum(['MODEL_NOT_CONFIGURED','MODEL_ERROR','MODEL_RATE_LIMITED','MODEL_TIMEOUT','MODEL_LIMIT','TOOL_LIMIT','TOOL_INVALID','NO_VERIFIED_RESULT','CANCELLED','INTERRUPTED','DRAFT_INVALID','DRAFT_EXPIRED','BUDGET_EXHAUSTED','INTERNAL_ERROR','GUARD_STOPPED']);
 export const AgentUsageSchema = z.strictObject({ requests:z.number().int().nonnegative(), inputTokens:z.number().nonnegative(), outputTokens:z.number().nonnegative(), cacheReadTokens:z.number().nonnegative(), cacheWriteTokens:z.number().nonnegative(), costUsd:z.number().nonnegative().nullable() });
 export const AgentConditionsSchema = z.strictObject({
   contextId:Id, account:AddressSchema, blockHash:HashSchema,
@@ -276,7 +276,7 @@ export type AgentUsage=z.infer<typeof AgentUsageSchema>;
 export type AgentError=z.infer<typeof AgentErrorSchema>;
 
 // Direct PI task submission; execution does not require a draft confirmation.
-export const CreateAgentRunSchema = z.strictObject({clientRequestId:Id,prompt:z.string().trim().min(1).max(6000)});
+export const CreateAgentRunSchema = z.strictObject({clientRequestId:Id,prompt:z.string().trim().min(1).max(6000), constraints:AgentConditionsSchema.optional(), untrustedMaterials:z.array(z.string().max(6000)).max(8).default([])});
 
 // Local transport diagnostics, separate from signed delivery evidence.
 export const ModelRequestTimingSchema = z.strictObject({
@@ -289,3 +289,27 @@ export const ModelRequestTimingSchema = z.strictObject({
   requestTimeoutMs:z.number().int().positive(),firstEventTimeoutMs:z.number().int().positive(),streamIdleTimeoutMs:z.number().int().positive(),
 });
 export type ModelRequestTiming=z.infer<typeof ModelRequestTimingSchema>;
+
+// Guard records are application security records, never A-package evidence.
+export const TaskBoundarySchema = z.strictObject({agentId:Id,version:z.literal(1),conditions:AgentConditionsSchema,source:z.enum(['CALLER','REVIEWER']),promptDigest:HashSchema});
+export type TaskBoundary=z.infer<typeof TaskBoundarySchema>;
+export const GuardDecisionSchema=z.strictObject({sequence:z.number().int().positive(),action:z.string(),argumentsDigest:HashSchema,boundaryDigest:HashSchema,ruleVersion:z.literal('guard-v1'),verdict:z.enum(['ALLOW','BLOCK','UNCERTAIN']),reasonCode:z.string().max(160),consumed:z.boolean(),latencyMs:z.number().nonnegative()});
+export type GuardDecision=z.infer<typeof GuardDecisionSchema>;
+export const ActivityRecordSchema=z.strictObject({agentId:Id,sequence:z.number().int().positive(),source:z.enum(['CALLER','ACTOR','EXTERNAL','EXECUTOR']),action:z.string(),argumentsDigest:HashSchema,status:z.enum(['PENDING','BLOCKED','AUTHORIZED','EXECUTED']),resultDigest:HashSchema.optional()});
+export type ActivityRecord=z.infer<typeof ActivityRecordSchema>;
+export const SecurityIncidentSchema=z.strictObject({
+  version:z.literal('guard-incident-v1'),reporterId:Id,incidentKey:HashSchema,revision:z.number().int().positive(),
+  status:z.enum(['SUSPECTED','REPRODUCED','FALSE_POSITIVE','REVOKED']),
+  action:z.enum(['start_task','request_verified_state','replay_evidence','external_material']),
+  boundary:AgentConditionsSchema,proposed:AgentConditionsSchema.nullable(),
+  decision:GuardDecisionSchema,executed:z.boolean(),materialDigests:z.array(HashSchema).max(8),
+  modelId:Id,modelSource:z.enum(['LIVE','TEST_TRANSPORT']),at:z.string().datetime(),
+  relatedEvidence:z.array(z.strictObject({bundle:EvidenceBundleSchema,manifest:EvidenceManifestSchema})).max(2).optional(),
+  redaction:z.enum(['SCOPE_RELATIONS','EXPLICIT_PUBLIC_SAMPLE']).optional(),
+  sharedMaterials:z.array(z.string().max(4000)).max(4).default([]),
+  // No prompt, chat, payload text, private keys, or claimed attacker identity.
+});
+export type SecurityIncident=z.infer<typeof SecurityIncidentSchema>;
+export const SignedSecurityIncidentSchema=z.strictObject({incident:SecurityIncidentSchema,digest:HashSchema,signature:z.string().max(300)});
+export const RuleCandidateSchema=z.strictObject({id:HashSchema,version:z.number().int().positive(),sourceIncident:HashSchema,kind:z.enum(['SCOPE_ACCOUNT','SCOPE_BLOCK','SCOPE_CANDIDATES','SCOPE_BUDGET']),status:z.enum(['CANDIDATE','TESTED','ENABLED','REVOKED']),regression:z.strictObject({attacks:z.number().int().nonnegative(),blocked:z.number().int().nonnegative(),controls:z.number().int().nonnegative(),falseBlocks:z.number().int().nonnegative()}).nullable()});
+export type RuleCandidate=z.infer<typeof RuleCandidateSchema>;

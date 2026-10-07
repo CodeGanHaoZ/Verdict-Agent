@@ -65,6 +65,12 @@ export const AgentConfigSchema = z.strictObject({
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export const ServerConfigSchema = z.strictObject({
   agent: AgentConfigSchema.optional(),
+  guard: AgentConfigSchema.optional(),
+  guardReports: z.strictObject({
+    reporterId:z.string().min(1).max(160),
+    signingKeyEnv:z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
+    trustedReporters:z.record(z.string(),z.string().max(2000)).default({}),
+  }).optional(),
   instanceId: z.string().regex(/^[\w.-]+$/),
   host: z.literal("127.0.0.1").default("127.0.0.1"),
   port: z.number().int().min(0).max(65535),
