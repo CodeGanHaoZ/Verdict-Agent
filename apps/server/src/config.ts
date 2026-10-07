@@ -68,10 +68,12 @@ export const WalletConfigSchema = z.strictObject({
     chainId: z.string().regex(/^0x[1-9a-f][0-9a-f]{0,15}$/), name: z.string().min(1).max(80),
     rpcUrlEnv: z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
     maxValueWei: DecimalSchema, maxTotalFeeWei: DecimalSchema,
+    nativeSymbol: z.string().min(1).max(12).optional(),
   })).min(1).max(8).refine(v => new Set(v.map(n => n.chainId)).size === v.length),
   rpcTimeoutMs: z.number().int().min(100).max(15000).default(8000),
   reviewTimeoutMs: z.number().int().min(100).max(180000).default(90000),
   permitTtlMs: z.number().int().min(100).max(120000).default(60000),
+  observationSource: z.enum(['LIVE','TEST_TRANSPORT']).default('LIVE'),
 });
 export const ServerConfigSchema = z.strictObject({
   wallet: WalletConfigSchema.optional(),

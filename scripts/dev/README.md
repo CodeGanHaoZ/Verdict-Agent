@@ -38,3 +38,5 @@ setup.mjs 的可选首参数可指定 `.local` 内的隔离输出目录，默认
 新间接注入配对集：`npm run redteam:indirect -- check` 校验来源／哈希；显式加载本地 PI 和 reviewer 环境后执行 `scripts/dev/redteam-indirect.ts live [caseId|pair]`。该模式前方和外审均为真实模型，不使用 CI 模型替身；结果与复跑说明见 [新增测试记录](../../docs/21-新增间接注入防御测试.md)。
 
 动作图录制：`graph:record` 用真实本地签名服务和 A 包生成 `fixtures/graph` 的三场景轨迹与哈希 manifest，模型明确标为 TEST_TRANSPORT。`test:graph` 复验图关联、回放及错误边界；重录会更新样本，须审阅后提交。
+
+BOT 钱包图：`wallet:configure-network` 仅更新显式指定的 `.local` 配置，设置 chainId `0x3c8`、币种 `tBOT` 和 RPC 环境变量名。用新目录、独立端口／dataDir 运行两实例，勿覆盖 Ethereum 实例。钱包图专项已经纳入 `test:graph`，本地 RPC／模型均标为 TEST_TRANSPORT，见 [配置及 API 示例](../../docs/24-钱包活动图与BOT测试网观察.md)。

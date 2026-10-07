@@ -52,7 +52,7 @@ function send(res: ServerResponse, code: number, data: unknown) {
 export function start_server(config: ServerConfig, launchId = "foreground") {
   const engine = new Engine(config);
   const agents = new AgentService(engine);
-  const wallet = new WalletReviews(engine.store, config);
+  const wallet = new WalletReviews(engine.store, config, agents.graph, agents.observer.record);
   let observationJob: Promise<unknown> | null = null;
   const server = createServer(async (req, res) => {
     try {
@@ -77,12 +77,20 @@ export function start_server(config: ServerConfig, launchId = "foreground") {
       const path = new URL(req.url ?? "/", "http://localhost").pathname;
       if(req.method==='GET'&&path==='/api/wallet/meta'){send(res,200,wallet.info());return;}
       if(req.method==='POST'&&path==='/api/wallet/reviews'){send(res,202,wallet.create(await body(req)));return;}
-      const walletRoute=path.match(/^\/api\/wallet\/reviews\/([\w-]+)(?:\/(consume|cancel))?$/);
+      if(req.method==='POST'&&path==='/api/wallet/evidence/replay'){send(res,200,await wallet.replayEvidence(await body(req)));return;}
+      const walletEvidenceRoute=path.match(/^\/api\/wallet\/evidence\/(0x[0-9a-f]{64})$/);
+      if(req.method==='GET'&&walletEvidenceRoute){send(res,200,wallet.evidence.read(walletEvidenceRoute[1]));return;}
+      const walletGraphRoute=path.match(/^\/api\/wallet\/reviews\/([\w-]+)\/graph$/);
+      if(req.method==='GET'&&walletGraphRoute){const query=new URL(req.url!,'http://localhost').searchParams;send(res,200,agents.graph.walletPage(walletGraphRoute[1],Number(query.get('after')??0),Number(query.get('limit')??200)));return;}
+      const receiptRecheck=path.match(/^\/api\/wallet\/reviews\/([\w-]+)\/receipt\/recheck$/);
+      if(req.method==='POST'&&receiptRecheck){z.strictObject({}).parse(await body(req));send(res,200,await wallet.recheckReceipt(receiptRecheck[1]));return;}
+      const walletRoute=path.match(/^\/api\/wallet\/reviews\/([\w-]+)(?:\/(consume|cancel|broadcast))?$/);
       if(walletRoute){
         const [,id,action]=walletRoute;
         if(req.method==='GET'&&!action){send(res,200,wallet.get(id));return;}
         if(req.method==='POST'&&action==='consume'){send(res,200,await wallet.consume(id,await body(req)));return;}
         if(req.method==='POST'&&action==='cancel'){z.strictObject({}).parse(await body(req));send(res,200,wallet.cancel(id));return;}
+        if(req.method==='POST'&&action==='broadcast'){send(res,200,await wallet.broadcast(id,await body(req)));return;}
       }
       if(req.method==='POST' && path==='/api/guard/reports/import'){send(res,200,agents.reports.import(await body(req)));return;}
       if(req.method==='GET' && path==='/api/guard/reports'){send(res,200,agents.reports.list());return;}
